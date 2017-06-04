@@ -1,0 +1,7 @@
+curl %KUDU_URL%/funclite
+
+curl -X PUT --data-binary @index.zip %KUDU_URL%/api/zip/LocalSiteRoot/funclite/
+
+curl -X POST -H "Content-Type: application/json" --data @InitBody.json %KUDU_URL%/funclite
+curl -X POST -H "Content-Type: application/json" --data @Body.json %KUDU_URL%/funclite
+
