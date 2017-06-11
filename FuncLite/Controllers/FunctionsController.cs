@@ -10,12 +10,10 @@ namespace FuncLite.Controllers
     [Route("api/[controller]")]
     public class FunctionsController : Controller
     {
-        readonly IConfiguration _config;
         readonly AppManager _appManager;
 
-        public FunctionsController(IConfiguration config, AppManager appManager)
+        public FunctionsController(AppManager appManager)
         {
-            _config = config;
             _appManager = appManager;
         }
 

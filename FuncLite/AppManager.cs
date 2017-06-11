@@ -10,8 +10,9 @@ namespace FuncLite
 {
     public class AppManager
     {
-        HttpClient _client;
+        readonly HttpClient _client;
         readonly MyConfig _config;
+        readonly Queue<App> _freeApps = new Queue<App>();
 
         public AppManager(IOptions<MyConfig> config)
         {
@@ -24,7 +25,16 @@ namespace FuncLite
             _client.DefaultRequestHeaders.Add("Authorization", "Bearer " + token);
             _client.BaseAddress = new Uri("https://management.azure.com/");
 
-            TestFunctionAppOperations().Wait();
+            Init().Wait();
+
+            CreateNewAppsIfNeeded().Wait();
+        }
+
+        private async Task Init()
+        {
+            await CreateResourceGroup(_config.ResourceGroup);
+
+            await LoadAllApps();
         }
 
         async Task CreateResourceGroup(string resourceGroup)
@@ -40,7 +50,7 @@ namespace FuncLite
             }
         }
 
-        async Task GetAllApps()
+        async Task LoadAllApps()
         {
             using (var response = await _client.GetAsync(
     $"/subscriptions/{_config.Subscription}/resourceGroups/{_config.ResourceGroup}/providers/Microsoft.Web/sites?api-version=2016-03-01"))
@@ -50,51 +60,25 @@ namespace FuncLite
                 var json = await response.Content.ReadAsAsync<dynamic>();
                 foreach (var app in json.value)
                 {
-                    Console.WriteLine(app.name);
-                    foreach (var hostname in app.properties.enabledHostNames)
-                    {
-                        Console.WriteLine("  " + hostname);
-                    }
+                    _freeApps.Enqueue(new App(_client, app.properties));
                 }
             }
-
         }
 
-        async Task CreateApp(string appName)
+        async Task CreateNewAppsIfNeeded()
         {
-            using (var response = await _client.PutAsJsonAsync(
-                $"/subscriptions/{_config.Subscription}/resourceGroups/{_config.ResourceGroup}/providers/Microsoft.Web/sites/{appName}?api-version=2016-03-01",
-                new
-                {
-                    location = _config.Region,
-                    kind = "functionapp",
-                    properties = new
-                    {
-                        siteConfig = new
-                        {
-                            appSettings = new object[]
-                            {
-                                new
-                                {
-                                    name = "FOO",
-                                    value = "BAR"
-                                }
-                            }
-                        }
-                    }
-                }))
+            int neededApps = _config.FreeAppQueueSize - _freeApps.Count;
+
+            var newAppTasks = new List<Task<App>>();
+            for (int i=0; i < neededApps; i++)
             {
-                response.EnsureSuccessStatusCode();
+                newAppTasks.Add(App.CreateApp(_client, _config, "funclite-" + Guid.NewGuid().ToString()));
             }
-        }
 
-        async Task TestFunctionAppOperations()
-        {
-            await CreateResourceGroup(_config.ResourceGroup);
-
-            await GetAllApps();
-
-            await CreateApp("funclite-" + Guid.NewGuid().ToString());
+            foreach (var app in await Task.WhenAll(newAppTasks))
+            {
+                _freeApps.Enqueue(app);
+            }
         }
     }
 }
