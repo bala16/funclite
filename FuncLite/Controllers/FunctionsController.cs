@@ -3,12 +3,22 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Configuration;
 
 namespace FuncLite.Controllers
 {
     [Route("api/[controller]")]
-    public class ValuesController : Controller
+    public class FunctionsController : Controller
     {
+        readonly IConfiguration _config;
+        readonly AppManager _appManager;
+
+        public FunctionsController(IConfiguration config, AppManager appManager)
+        {
+            _config = config;
+            _appManager = appManager;
+        }
+
         // GET api/values
         [HttpGet]
         public IEnumerable<string> Get()

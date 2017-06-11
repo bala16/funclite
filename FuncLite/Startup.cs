@@ -27,8 +27,13 @@ namespace FuncLite
         // This method gets called by the runtime. Use this method to add services to the container.
         public void ConfigureServices(IServiceCollection services)
         {
+            // Add our Config object so it can be injected
+            services.Configure<MyConfig>(Configuration);
+
             // Add framework services.
             services.AddMvc();
+
+            services.AddSingleton<AppManager>();
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
@@ -36,6 +41,11 @@ namespace FuncLite
         {
             loggerFactory.AddConsole(Configuration.GetSection("Logging"));
             loggerFactory.AddDebug();
+
+            if (env.IsDevelopment())
+            {
+                app.UseDeveloperExceptionPage();
+            }
 
             app.UseMvc();
         }
