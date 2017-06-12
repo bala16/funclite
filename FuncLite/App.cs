@@ -39,7 +39,13 @@ namespace FuncLite
 
                 var json = await response.Content.ReadAsAsync<dynamic>();
                 var app = new App(client, json.properties);
+
+                // Upload the lightweight host
                 await app.UploadLanguageHost();
+
+                // Restart the app so the site extension takes effect in the scm site
+                await app.Restart();
+
                 return app;
             }
         }
@@ -58,11 +64,21 @@ namespace FuncLite
             }
         }
 
-        public async Task UploadLanguageHost()
+        async Task UploadLanguageHost()
         {
             using (var response = await _client.PutZipFile($"{ScmBaseUrl}/api/zip", "App_Data/node.zip"))
             {
                 response.EnsureSuccessStatusCode();
+            }
+        }
+
+        async Task Restart()
+        {
+            // Just kill the scm site to restart it (faster than full site restart)
+            using (var response = await _client.DeleteAsync($"{ScmBaseUrl}/api/processes/0"))
+            {
+                // Ignore errors as suiciding the scm w3wp can cause the delete request to fail (even though it still kills it)
+                //response.EnsureSuccessStatusCode();
             }
         }
 
