@@ -23,12 +23,12 @@ namespace FuncLite
                     {
                         siteConfig = new
                         {
-                            appSettings = new object[]
+                            appSettings = new []
                             {
                                 new
                                 {
-                                    name = "FOO",
-                                    value = "BAR"
+                                    name = "FUNCFILE",
+                                    value = "D:/local/funclite/index.js"
                                 }
                             }
                         }
@@ -85,6 +85,14 @@ namespace FuncLite
         public async Task SendWarmUpRequest()
         {
             using (var response = await _client.GetAsync(ScmBaseUrl))
+            {
+                response.EnsureSuccessStatusCode();
+            }
+        }
+
+        public async Task SendRequest(object payload)
+        {
+            using (var response = await _client.PutAsJsonAsync(ScmBaseUrl, payload))
             {
                 response.EnsureSuccessStatusCode();
             }

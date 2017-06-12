@@ -10,42 +10,44 @@ namespace FuncLite.Controllers
     [Route("api/[controller]")]
     public class FunctionsController : Controller
     {
-        readonly AppManager _appManager;
+        readonly FunctionManager _funcManager;
 
-        public FunctionsController(AppManager appManager)
+        public FunctionsController(FunctionManager funcManager)
         {
-            _appManager = appManager;
+            _funcManager = funcManager;
         }
 
-        // GET api/values
+        // GET api/functions
         [HttpGet]
         public IEnumerable<string> Get()
         {
             return new string[] { "value1", "value2" };
         }
 
-        // GET api/values/5
-        [HttpGet("{id}")]
-        public string Get(int id)
+        // GET api/functions/foo
+        [HttpGet("{name}")]
+        public string Get(int name)
         {
             return "value";
         }
 
-        // POST api/values
+        // PUT api/functions/foo
+        [HttpPut("{name}")]
+        public void Put(int name, [FromBody]string value)
+        {
+        }
+
+        // POST api/functions/foo/run
         [HttpPost]
-        public void Post([FromBody]string value)
+        [Route("{name}/run")]
+        public void Run(string name, [FromBody]string value)
         {
+
         }
 
-        // PUT api/values/5
-        [HttpPut("{id}")]
-        public void Put(int id, [FromBody]string value)
-        {
-        }
-
-        // DELETE api/values/5
-        [HttpDelete("{id}")]
-        public void Delete(int id)
+        // DELETE api/functions/5
+        [HttpDelete("{name}")]
+        public void Delete(int name)
         {
         }
     }
