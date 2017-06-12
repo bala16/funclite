@@ -38,7 +38,9 @@ namespace FuncLite
                 response.EnsureSuccessStatusCode();
 
                 var json = await response.Content.ReadAsAsync<dynamic>();
-                return new App(client, json.properties);
+                var app = new App(client, json.properties);
+                await app.UploadLanguageHost();
+                return app;
             }
         }
 
@@ -46,6 +48,30 @@ namespace FuncLite
         {
             _client = client;
             _siteProps = siteProps;
+        }
+
+        public string ScmBaseUrl
+        {
+            get
+            {
+                return $"https://{_siteProps.enabledHostNames[1]}";
+            }
+        }
+
+        public async Task UploadLanguageHost()
+        {
+            using (var response = await _client.PutZipFile($"{ScmBaseUrl}/api/zip", "App_Data/node.zip"))
+            {
+                response.EnsureSuccessStatusCode();
+            }
+        }
+
+        public async Task SendWarmUpRequest()
+        {
+            using (var response = await _client.GetAsync(ScmBaseUrl))
+            {
+                response.EnsureSuccessStatusCode();
+            }
         }
     }
 }

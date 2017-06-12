@@ -28,6 +28,8 @@ namespace FuncLite
             Init().Wait();
 
             CreateNewAppsIfNeeded().Wait();
+
+            WarmUpFreeApps().Wait();
         }
 
         private async Task Init()
@@ -58,9 +60,10 @@ namespace FuncLite
                 response.EnsureSuccessStatusCode();
 
                 var json = await response.Content.ReadAsAsync<dynamic>();
-                foreach (var app in json.value)
+                foreach (var appProps in json.value)
                 {
-                    _freeApps.Enqueue(new App(_client, app.properties));
+                    var app = new App(_client, appProps.properties);
+                    _freeApps.Enqueue(app);
                 }
             }
         }
@@ -79,6 +82,17 @@ namespace FuncLite
             {
                 _freeApps.Enqueue(app);
             }
+        }
+
+        async Task WarmUpFreeApps()
+        {
+            var appRefreshTasks = new List<Task>();
+            foreach (var app in _freeApps)
+            {
+                appRefreshTasks.Add(app.SendWarmUpRequest());
+            }
+
+            await Task.WhenAll(appRefreshTasks);
         }
     }
 }
