@@ -4,6 +4,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Net.Http;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace FuncLite
@@ -29,7 +30,8 @@ namespace FuncLite
 
             CreateNewAppsIfNeeded().Wait();
 
-            WarmUpFreeApps().Wait();
+            // Keep all the free apps warm every minute
+            new Timer(o => WarmUpFreeApps().Wait(), null, 0, 60000);
         }
 
         public App GetApp()
