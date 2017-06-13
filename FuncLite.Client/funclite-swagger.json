@@ -74,25 +74,41 @@
                     "type": "string"
                 }
             ],
-            "put": {
-                "operationId": "CreateUpdateFunction",
-                "summary": "Create or update a function",
-                "description": "",
-                "consumes": [
-                    "application/zip"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "responses": {
-                    "201": {
-                        "description": "successful operation",
-                        "schema": {
-                            "$ref": "#/definitions/VersionInfo"
-                        }
-                    }
+          "put": {
+            "operationId": "CreateUpdateFunction",
+            "summary": "Create or update a function",
+            "description": "",
+            "consumes": [
+              "multipart/form-data"
+            ],
+            "produces": [
+              "application/json"
+            ],
+            "parameters": [
+              {
+                "name": "functionPackage",
+                "in": "formData",
+                "description": "The file to upload",
+                "required": true,
+                "type": "file"
+              },
+              {
+                "name" : "language",
+                "in": "formData",
+                "decription": "The language of the function",
+                "required": true,
+                "type" : "string"
+              }
+            ],
+            "responses": {
+              "201": {
+                "description": "successful operation",
+                "schema": {
+                  "$ref": "#/definitions/VersionInfo"
                 }
-            },
+              }
+            }
+          },
             "delete": {
                 "operationId": "DeleteFunction",
                 "summary": "Delete a function",

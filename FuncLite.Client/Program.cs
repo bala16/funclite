@@ -3,21 +3,26 @@ using FuncLite.Client.BackendHelper.Models;
 using Microsoft.Extensions.CommandLineUtils;
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Threading.Tasks;
+using System.IO.Compression;
 
 namespace FuncLite.Client
 {
     class Program
     {
         const string backendURL = "https://functions.azure.com";
+        const string archiveFileName = "funcLitePackage.zip";
 
         static void Main(string[] args)
         {
             CommandLine cli = new CommandLine(backendURL);
 
-            cli.RegisterRun();
 
             cli.RegisterList();
+
+            //cli.RegisterRun();
+
             cli.RegisterPublish();
             cli.RegisterDelete();
             cli.RegisterDetails();
@@ -26,23 +31,44 @@ namespace FuncLite.Client
 
             cli.RegisterGetLogs();
 
-            cli.Parse(args);
+
+             cli.Parse(args);
+ 
         }
 
         public class CommandLine
         {
             private FunctionsLite client;
             private CommandLineApplication application;
+            private CommandLineApplication functionCommand;
+
             public CommandLine(string url)
             {
                 client = new FunctionsLite(new Uri(url));
                 application = new CommandLineApplication();
                 application.HelpOption("-? | -h | --help");
+                functionCommand = application.Command("function", (command) =>
+                {
+                    command.HelpOption("--help");
+                    command.OnExecute(() =>
+                    {
+                        Console.WriteLine(command.GetHelpText());
+                        return 1;
+                    });
+                });
             }
 
             public int Parse(string[] args)
             {
-                return application.Execute(args);
+                try
+                {
+                    return application.Execute(args);
+                }
+                catch (CommandParsingException)
+                {
+                    Console.WriteLine(application.GetHelpText());
+                    return 1;
+                }
             }
 
             private void LogExecution(CommandLineApplication command)
@@ -50,12 +76,30 @@ namespace FuncLite.Client
                 Console.WriteLine("Executing " + command.Name + "...");
             }
 
+            private bool ValidateArguments(CommandLineApplication command)
+            {
+                if (command.Arguments.Exists(arg => arg.Value == null))
+                {
+                    Console.WriteLine(command.GetHelpText());
+                    return false;
+                }
+                Console.WriteLine("Executing " + command.Name + "...");
+                return true;
+            }
+
             public void RegisterList()
             {
                 application.Command("list", (command) => {
+                    command.HelpOption("--help");
                     command.OnExecute(async () =>
                     {
+                        if (command.Arguments.Exists(arg => arg.Value == null))
+                        {
+                            Console.WriteLine(command.GetHelpText());
+                            return 1;
+                        }
                         LogExecution(command);
+
                         IList<Function> functions = await client.ListFunctionsAsync();
                         foreach(Function f in functions)
                         {
@@ -71,14 +115,59 @@ namespace FuncLite.Client
             {
                 CommandArgument name = null;
                 CommandArgument path = null;
-                application.Command("publish", (command) => {
+                functionCommand.Command("publish", (command) => {
+                    command.HelpOption("--help");
                     name = command.Argument("functionName", "The name of the target function");
-                    name = command.Argument("path", "The files to be published");
+                    path = command.Argument("path", "The files to be published");
                     command.OnExecute(async () =>
                     {
+                        if (command.Arguments.Exists(arg => arg.Value == null))
+                        {
+                            Console.WriteLine(command.GetHelpText());
+                            return 1;
+                        }
                         LogExecution(command);
-                        //TODO create ZIP and submit
-                        await client.CreateUpdateFunctionAsync(name.Value);
+
+                        //Load in path and establish language
+                        string language = null;
+                        Console.WriteLine(path.Value);
+                        var directory = Directory.EnumerateFiles(path.Value);
+                        bool hasNode = false;
+                        bool hasRuby = false;
+                        foreach (string file in directory)
+                        {
+                            string fileName = file.Substring(path.Value.Length + 1);
+                            Console.WriteLine(fileName);
+                            if (fileName.Equals("index.js")){
+                                hasNode = true;
+                            }
+                            else if (fileName.Equals("function.rb")){
+                                hasRuby = true;
+                            }
+                        }
+                        if (hasNode)
+                        {
+                            language = "javascript";
+                        }
+                        else if (hasRuby)
+                        {
+                            language = "ruby";
+                        }
+                        else
+                        {
+                            return 1;
+                        }
+
+                        //Create zip
+                        string archiveFile = Path.GetTempPath() + archiveFileName;
+                        Console.WriteLine(archiveFile);
+                        ZipFile.CreateFromDirectory(path.Value, archiveFile);
+                        Stream zipfile = new FileStream(archiveFile, FileMode.Open);
+
+                        await client.CreateUpdateFunctionAsync(zipfile, language, name.Value);
+                        zipfile.Dispose();
+                        File.Delete(archiveFile);
+
                         return 0;
                     });
                 });
@@ -87,11 +176,17 @@ namespace FuncLite.Client
             public void RegisterGetVersions()
             {
                 CommandArgument name = null;
-                application.Command("versions", (command) => {
+                functionCommand.Command("versions", (command) => {
                     name = command.Argument("functionName", "The name of the target function");
                     command.HelpOption("--help");
                     command.OnExecute(async () =>
                     {
+
+                        if (command.Arguments.Exists(arg => arg.Value == null))
+                        {
+                            Console.WriteLine(command.GetHelpText());
+                            return 1;
+                        }
                         LogExecution(command);
                         IList<VersionInfo> versions = await client.ListVersionsForFunctionAsync(name.Value);
                         foreach (VersionInfo v in versions)
@@ -107,12 +202,18 @@ namespace FuncLite.Client
             {
                 CommandArgument name = null;
                 CommandOption version = null;
-                application.Command("detail", (command) => {
+                functionCommand.Command("detail", (command) => {
                     name = command.Argument("functionName", "The name of the target function");
-                    command.Option("-v | --version", "A specific version to read", CommandOptionType.SingleValue);
+                    version = command.Option("-v | --version", "A specific version to read", CommandOptionType.SingleValue);
                     command.HelpOption("--help");
                     command.OnExecute(async () =>
                     {
+
+                        if (command.Arguments.Exists(arg => arg.Value == null))
+                        {
+                            Console.WriteLine(command.GetHelpText());
+                            return 1;
+                        }
                         LogExecution(command);
                         if (version.HasValue()) {
                             VersionInfo v = await client.GetVersionOfFunctionAsync(name.Value, version.Value());
@@ -134,12 +235,18 @@ namespace FuncLite.Client
             {
                 CommandArgument name = null;
                 CommandOption version = null;
-                application.Command("delete", (command) => {
+                functionCommand.Command("delete", (command) => {
                     name = command.Argument("functionName", "The name of the target function");
                     version = command.Option("-v | --version", "A specific version to delete", CommandOptionType.SingleValue);
                     command.HelpOption("--help");
                     command.OnExecute(async () =>
                     {
+
+                        if (command.Arguments.Exists(arg => arg.Value == null))
+                        {
+                            Console.WriteLine(command.GetHelpText());
+                            return 1;
+                        }
                         LogExecution(command);
                         if (version.HasValue())
                         {
@@ -162,12 +269,17 @@ namespace FuncLite.Client
             {
                 CommandArgument name = null;
                 CommandOption invocation = null;
-                application.Command("logs", (command) => {
+                functionCommand.Command("logs", (command) => {
                     name = command.Argument("functionName", "The name of the target function");
                     invocation = command.Option("-i | --invocation", "A specific invocation to get logs for", CommandOptionType.SingleValue);
                     command.HelpOption("--help");
                     command.OnExecute(async () =>
                     {
+                        if (command.Arguments.Exists(arg => arg.Value == null))
+                        {
+                            Console.WriteLine(command.GetHelpText());
+                            return 1;
+                        }
                         LogExecution(command);
 
                         if (invocation.HasValue())
@@ -187,29 +299,35 @@ namespace FuncLite.Client
 
 
             //TODO
-            public void RegisterRun()
-            {
-                CommandArgument name = null;
-                CommandOption version = null;
-                application.Command("run", (command) => {
-                    name = command.Argument("functionName", "The name of the target function");
-                    version = command.Option("-v | --version", "A specific version to run", CommandOptionType.SingleValue);
-                    command.HelpOption("--help");
-                    command.OnExecute(async () =>
-                    {
-                        LogExecution(command);
-                        //if (version.HasValue())
-                        //{
+            //public void RegisterRun()
+            //{
+            //    CommandArgument name = null;
+            //    CommandOption version = null;
+            //    functionCommand.Command("run", (command) => {
+            //        name = command.Argument("functionName", "The name of the target function");
+            //        version = command.Option("-v | --version", "A specific version to run", CommandOptionType.SingleValue);
+            //        command.HelpOption("--help");
+            //        command.OnExecute(async () =>
+            //        {
 
-                        //}
-                        //else
-                        //{
+            //            if (command.Arguments.Exists(arg => arg.Value == null))
+            //            {
+            //                Console.WriteLine(command.GetHelpText());
+            //                return 1;
+            //            }
+            //            LogExecution(command);
+            //            //if (version.HasValue())
+            //            //{
 
-                        //}
-                        return 0;
-                    });
-                });
-            }
+            //            //}
+            //            //else
+            //            //{
+
+            //            //}
+            //            return 0;
+            //        });
+            //    });
+            //}
 
         }
 
