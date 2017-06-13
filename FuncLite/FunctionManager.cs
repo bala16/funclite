@@ -19,12 +19,14 @@ namespace FuncLite
             _appManager = appManager;
             _functionsFolder = Path.Combine(config.Value.DataFolder, "Functions");
             Directory.CreateDirectory(_functionsFolder);
+
+            LoadExistingFunctions();
         }
 
         public async Task<Function> Create(string name, Stream zipContent)
         {
             Function function = GetFunction(name);
-            await function.Create(zipContent);
+            await function.CreateNewVersion(zipContent);
             return function;
         }
 
@@ -38,12 +40,20 @@ namespace FuncLite
             return await function.Run(requestBody);
         }
 
+        void LoadExistingFunctions()
+        {
+            foreach (string functionFolderPath in Directory.EnumerateDirectories(_functionsFolder))
+            {
+                string functionName = Path.GetFileName(functionFolderPath);
+                _functions[functionName] = new Function(_appManager, functionFolderPath);
+            }
+        }
+
         Function GetFunction(string name)
         {
             if (!_functions.TryGetValue(name, out Function function))
             {
-                function = new Function(_appManager, Path.Combine(_functionsFolder, name));
-                _functions[name] = function;
+                _functions[name] = new Function(_appManager, Path.Combine(_functionsFolder, name));
             }
 
             return function;

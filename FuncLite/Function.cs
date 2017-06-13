@@ -9,6 +9,7 @@ namespace FuncLite
 {
     public class Function
     {
+        const string ZipFileName = "package.zip";
         readonly AppManager _appManager;
         Dictionary<int, FunctionVersion> _versions = new Dictionary<int, FunctionVersion>();
         readonly string _folder;
@@ -18,15 +19,32 @@ namespace FuncLite
             _appManager = appManager;
             _folder = folder;
             Directory.CreateDirectory(_folder);
+
+            LoadExistingVersions();
         }
 
-        public async Task Create(Stream zipContent)
+        void LoadExistingVersions()
+        {
+            foreach (string versionFolderPath in Directory.EnumerateDirectories(_folder))
+            {
+                if (!Int32.TryParse(Path.GetFileName(versionFolderPath), out int version))
+                {
+                    // Ignore non-version folders
+                    continue;
+                }
+
+                string packagePath = Path.Combine(versionFolderPath, ZipFileName);
+                _versions[version] = new FunctionVersion(_appManager, packagePath);
+            }
+        }
+
+        public async Task CreateNewVersion(Stream zipContent)
         {
             int newVersion = GetNewVersion();
 
             string versionFolder = Path.Combine(_folder, newVersion.ToString());
             Directory.CreateDirectory(versionFolder);
-            string packagePath = Path.Combine(versionFolder, "package.zip");
+            string packagePath = Path.Combine(versionFolder, ZipFileName);
             using (Stream zip = File.Create(packagePath))
             {
                 await zipContent.CopyToAsync(zip);
