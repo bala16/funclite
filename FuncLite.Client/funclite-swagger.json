@@ -1,0 +1,268 @@
+{
+    "swagger": "2.0",
+    "info": {
+        "title": "Functions Lite",
+        "description": "Manages and executes functions using Functions Lite",
+        "version": "1.0.0",
+        "license": {
+            "name": "MIT"
+        }
+    },
+    "schemes": [
+        "https",
+        "http"
+    ],
+    "paths": {
+        "/run/{functionName}": {
+            "parameters": [
+                {
+                    "name": "functionName",
+                    "in": "path",
+                    "description": "The name of the function",
+                    "required": true,
+                    "type": "string"
+                }
+            ]
+        },
+        "/run/{functionName}/{versionId}": {
+            "parameters": [
+                {
+                    "name": "functionName",
+                    "in": "path",
+                    "description": "The name of the function",
+                    "required": true,
+                    "type": "string"
+                },
+                {
+                    "name": "versionId",
+                    "in": "path",
+                    "description": "The version identifier",
+                    "required": true,
+                    "type": "string"
+                }
+            ]
+        },
+        "/admin/functions": {
+            "get": {
+                "operationId": "ListFunctions",
+                "summary": "Lists the functions",
+                "description": "",
+                "produces": [
+                    "application/json"
+                ],
+                "parameters": [],
+                "responses": {
+                    "200": {
+                        "description": "successful operation",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/Function"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/admin/functions/{functionName}": {
+            "parameters": [
+                {
+                    "name": "functionName",
+                    "in": "path",
+                    "description": "The name of the function",
+                    "required": true,
+                    "type": "string"
+                }
+            ],
+            "put": {
+                "operationId": "CreateUpdateFunction",
+                "summary": "Create or update a function",
+                "description": "",
+                "consumes": [
+                    "application/zip"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "responses": {
+                    "201": {
+                        "description": "successful operation",
+                        "schema": {
+                            "$ref": "#/definitions/VersionInfo"
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "operationId": "DeleteFunction",
+                "summary": "Delete a function",
+                "description": "",
+                "responses": {
+                    "204": {
+                        "description": "successful operation"
+                    }
+                }
+            }
+        },
+        "/admin/functions/{functionName}/versions": {
+            "parameters": [
+                {
+                    "name": "functionName",
+                    "in": "path",
+                    "description": "The name of the function",
+                    "required": true,
+                    "type": "string"
+                }
+            ],
+            "get": {
+                "operationId": "ListVersionsForFunction",
+                "summary": "Lists the versions of a funciton",
+                "description": "",
+                "produces": [
+                    "application/json"
+                ],
+                "parameters": [],
+                "responses": {
+                    "200": {
+                        "description": "successful operation",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/VersionInfo"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/admin/functions/{functionName}/versions/{versionId}": {
+            "parameters": [
+                {
+                    "name": "functionName",
+                    "in": "path",
+                    "description": "The name of the function",
+                    "required": true,
+                    "type": "string"
+                },
+                {
+                    "name": "versionId",
+                    "in": "path",
+                    "description": "The version identifier",
+                    "required": true,
+                    "type": "string"
+                }
+            ],
+            "get": {
+                "operationId": "GetVersionOfFunction",
+                "summary": "Get a specific version of a function",
+                "description": "",
+                "produces": [
+                    "application/json"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "successful operation",
+                        "schema": {
+                            "$ref": "#/definitions/VersionInfo"
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "operationId": "DeleteVersionOfFunction",
+                "summary": "Delete a version",
+                "description": "",
+                "responses": {
+                    "204": {
+                        "description": "successful operation"
+                    }
+                }
+            }
+        },
+        "/admin/functions/{functionName}/logs": {
+            "parameters": [
+                {
+                    "name": "functionName",
+                    "in": "path",
+                    "description": "The name of the function",
+                    "required": true,
+                    "type": "string"
+                }
+            ],
+            "get": {
+                "operationId": "GetLogStream",
+                "summary": "Get the streaming logs for a function",
+                "description": "",
+                "produces": [
+                    "text/plain"
+                ],
+              "responses": {
+                "200": {
+                  "description": "successful operation",
+                  "schema": {
+                    "type": "string"
+
+                  }
+                }
+              }
+            }
+        },
+        "/admin/functions/{functionName}/logs/{invocationId}": {
+            "parameters": [
+                {
+                    "name": "functionName",
+                    "in": "path",
+                    "description": "The name of the function",
+                    "required": true,
+                    "type": "string"
+                },
+                {
+                    "name": "invocationId",
+                    "in": "path",
+                    "description": "The identifier for a specific invocation",
+                    "required": true,
+                    "type": "string"
+                }
+            ],
+            "get": {
+                "operationId": "GetLogForInvocation",
+                "summary": "Get the logs for a single invocation",
+                "description": "",
+                "produces": [
+                    "text/plain"
+                ],
+                "responses": {
+                  "200": {
+                    "description": "successful operation",
+                    "schema": {
+                      "type": "string"
+
+                    }
+                  }
+                }
+            }
+        }
+    },
+    "definitions": {
+        "Function": {
+            "type": "object",
+            "properties": {
+                "name": {
+                    "type": "string"
+                }
+            }
+        },
+        "VersionInfo": {
+            "type": "object",
+            "properties": {
+                "Id": {
+                    "type": "string"
+                },
+                "CreatedAt": {
+                    "type": "string",
+                    "format": "date-time"
+                }
+            }
+        }
+    }
+}
