@@ -14,5 +14,6 @@ namespace FuncLite
         public string ClientId { get; set; }
         public string ClientSecret { get; set; }
         public int FreeAppQueueSize { get; set; }
+        public string DataFolder { get; set; }
     }
 }

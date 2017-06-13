@@ -10,6 +10,7 @@ namespace FuncLite
     {
         readonly dynamic _siteProps;
         readonly HttpClient _client;
+        readonly MyConfig _config;
 
         public static async Task<App> CreateApp(HttpClient client, MyConfig config, string appName)
         {
@@ -38,7 +39,7 @@ namespace FuncLite
                 response.EnsureSuccessStatusCode();
 
                 var json = await response.Content.ReadAsAsync<dynamic>();
-                var app = new App(client, json.properties);
+                var app = new App(client, config, json.properties);
 
                 // Upload the lightweight host
                 await app.UploadLanguageHost();
@@ -50,9 +51,10 @@ namespace FuncLite
             }
         }
 
-        public App(HttpClient client, dynamic siteProps)
+        public App(HttpClient client, MyConfig config, dynamic siteProps)
         {
             _client = client;
+            _config = config;
             _siteProps = siteProps;
         }
 
@@ -66,7 +68,7 @@ namespace FuncLite
 
         async Task UploadLanguageHost()
         {
-            using (var response = await _client.PutZipFile($"{ScmBaseUrl}/api/zip", "App_Data/node.zip"))
+            using (var response = await _client.PutZipFile($"{ScmBaseUrl}/api/zip", $"{_config.DataFolder}/runtimes/node.zip"))
             {
                 response.EnsureSuccessStatusCode();
             }

@@ -55,14 +55,14 @@ namespace FuncLite
         async Task LoadAllApps()
         {
             using (var response = await _client.GetAsync(
-    $"/subscriptions/{_config.Subscription}/resourceGroups/{_config.ResourceGroup}/providers/Microsoft.Web/sites?api-version=2016-03-01"))
+                $"/subscriptions/{_config.Subscription}/resourceGroups/{_config.ResourceGroup}/providers/Microsoft.Web/sites?api-version=2016-03-01"))
             {
                 response.EnsureSuccessStatusCode();
 
                 var json = await response.Content.ReadAsAsync<dynamic>();
                 foreach (var appProps in json.value)
                 {
-                    var app = new App(_client, appProps.properties);
+                    var app = new App(_client, _config, appProps.properties);
                     _freeApps.Enqueue(app);
                 }
             }

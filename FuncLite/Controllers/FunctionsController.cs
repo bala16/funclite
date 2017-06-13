@@ -4,6 +4,8 @@ using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Configuration;
+using Microsoft.AspNetCore.Http;
+using System.IO;
 
 namespace FuncLite.Controllers
 {
@@ -26,15 +28,18 @@ namespace FuncLite.Controllers
 
         // GET api/functions/foo
         [HttpGet("{name}")]
-        public string Get(int name)
+        public string Get(string name)
         {
             return "value";
         }
 
         // PUT api/functions/foo
         [HttpPut("{name}")]
-        public void Put(int name, [FromBody]string value)
+        public async Task<IActionResult> Put(string name)
         {
+            await _funcManager.Create(name, Request.Body);
+
+            return Ok(new { result = "function created" });
         }
 
         // POST api/functions/foo/run
@@ -45,7 +50,7 @@ namespace FuncLite.Controllers
 
         }
 
-        // DELETE api/functions/5
+        // DELETE api/functions/foo
         [HttpDelete("{name}")]
         public void Delete(int name)
         {
