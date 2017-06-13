@@ -1,4 +1,5 @@
 ﻿using Microsoft.Extensions.Options;
+using Newtonsoft.Json.Linq;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -25,6 +26,16 @@ namespace FuncLite
             Function function = GetFunction(name);
             await function.Create(zipContent);
             return function;
+        }
+
+        public async Task<dynamic> Run(string name, JObject requestBody)
+        {
+            if (!_functions.TryGetValue(name, out Function function))
+            {
+                throw new FileNotFoundException($"Function {name} does not exist");
+            }
+
+            return await function.Run(requestBody);
         }
 
         Function GetFunction(string name)

@@ -41,11 +41,7 @@ namespace FuncLite
                 var json = await response.Content.ReadAsAsync<dynamic>();
                 var app = new App(client, config, json.properties);
 
-                // Upload the lightweight host
-                await app.UploadLanguageHost();
-
-                // Restart the app so the site extension takes effect in the scm site
-                await app.Restart();
+                await app.CompleteCreation();
 
                 return app;
             }
@@ -58,7 +54,7 @@ namespace FuncLite
             _siteProps = siteProps;
         }
 
-        public string ScmBaseUrl
+        string ScmBaseUrl
         {
             get
             {
@@ -66,9 +62,67 @@ namespace FuncLite
             }
         }
 
+        async Task CompleteCreation()
+        {
+            // Upload the lightweight host
+            await UploadLanguageHost();
+
+            // Restart the app so the site extension takes effect in the scm site
+            await Restart();
+        }
+
+        public async Task SendWarmUpRequest()
+        {
+            // As a warmup request, create the folder where the user files will land, to make sure it's there is the site restarts
+            await CreateKuduFolder(@"d:\local\funclite");
+
+            using (var response = await _client.GetAsync($"{ScmBaseUrl}/funclite"))
+            {
+                response.EnsureSuccessStatusCode();
+            }
+        }
+
+        public async Task<dynamic> SendRequest(object payload)
+        {
+            using (var response = await _client.PostAsJsonAsync($"{ScmBaseUrl}/funclite", payload))
+            {
+                response.EnsureSuccessStatusCode();
+
+                return await response.Content.ReadAsAsync<dynamic>();
+            }
+        }
+
+        async Task RunKuduCommand(string command)
+        {
+            using (var response = await _client.PostAsJsonAsync(
+                $"{ScmBaseUrl}/api/command",
+                new
+                {
+                    command = command
+                }))
+            {
+                response.EnsureSuccessStatusCode();
+            }
+        }
+
+        async Task CreateKuduFolder(string folder)
+        {
+            await RunKuduCommand($"mkdir {folder}");
+        }
+
         async Task UploadLanguageHost()
         {
-            using (var response = await _client.PutZipFile($"{ScmBaseUrl}/api/zip", $"{_config.DataFolder}/runtimes/node.zip"))
+            await CreateKuduFolder(@"d:\home\SiteExtensions\FuncLite");
+
+            using (var response = await _client.PutZipFile($"{ScmBaseUrl}/api/zip/SiteExtensions/FuncLite", $"{_config.DataFolder}/runtimes/node.zip"))
+            {
+                response.EnsureSuccessStatusCode();
+            }
+        }
+
+        public async Task UploadUserCode(string zipPackagePath)
+        {
+            using (var response = await _client.PutZipFile($"{ScmBaseUrl}/api/zip/LocalSiteRoot/funclite", zipPackagePath))
             {
                 response.EnsureSuccessStatusCode();
             }
@@ -81,22 +135,6 @@ namespace FuncLite
             {
                 // Ignore errors as suiciding the scm w3wp can cause the delete request to fail (even though it still kills it)
                 //response.EnsureSuccessStatusCode();
-            }
-        }
-
-        public async Task SendWarmUpRequest()
-        {
-            using (var response = await _client.GetAsync(ScmBaseUrl))
-            {
-                response.EnsureSuccessStatusCode();
-            }
-        }
-
-        public async Task SendRequest(object payload)
-        {
-            using (var response = await _client.PutAsJsonAsync(ScmBaseUrl, payload))
-            {
-                response.EnsureSuccessStatusCode();
             }
         }
     }

@@ -27,6 +27,12 @@ namespace FuncLite
             return client.PutAsync(requestUri, httpContent);
         }
 
+        public static Task<HttpResponseMessage> PostAsJsonAsync<T>(this HttpClient client, string requestUri, T value)
+        {
+            var httpContent = new StringContent(JsonConvert.SerializeObject(value), Encoding.UTF8, "application/json");
+            return client.PostAsync(requestUri, httpContent);
+        }
+
         public static async Task<HttpResponseMessage> PutZipFile(this HttpClient client, string uri, string localZipPath)
         {
             using (var stream = File.OpenRead(localZipPath))

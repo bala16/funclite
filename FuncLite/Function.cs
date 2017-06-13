@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Newtonsoft.Json.Linq;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -32,6 +33,18 @@ namespace FuncLite
             }
 
             _versions[newVersion] = new FunctionVersion(_appManager, packagePath);
+        }
+
+        public async Task<dynamic> Run(JObject requestBody)
+        {
+            int latestVersion = GetLatestVersion();
+            if (latestVersion <= 0)
+            {
+                throw new Exception($"Function doesn'thave any versions");
+            }
+
+            var funcVersion = _versions[latestVersion];
+            return await funcVersion.Run(requestBody);
         }
 
         int GetLatestVersion()

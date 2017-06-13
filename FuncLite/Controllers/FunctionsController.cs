@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Configuration;
 using Microsoft.AspNetCore.Http;
 using System.IO;
+using Newtonsoft.Json.Linq;
 
 namespace FuncLite.Controllers
 {
@@ -45,9 +46,9 @@ namespace FuncLite.Controllers
         // POST api/functions/foo/run
         [HttpPost]
         [Route("{name}/run")]
-        public void Run(string name, [FromBody]string value)
+        public async Task<dynamic> Run(string name, [FromBody]JObject requestBody)
         {
-
+            return await _funcManager.Run(name, requestBody);
         }
 
         // DELETE api/functions/foo
