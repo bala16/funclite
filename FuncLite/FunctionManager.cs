@@ -23,6 +23,8 @@ namespace FuncLite
             LoadExistingFunctions();
         }
 
+        public IEnumerable<string> Functions => _functions.Keys;
+
         public async Task<Function> Create(string name, Stream zipContent)
         {
             Function function = GetFunction(name);

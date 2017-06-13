@@ -24,14 +24,14 @@ namespace FuncLite.Controllers
         [HttpGet]
         public IEnumerable<string> Get()
         {
-            return new string[] { "value1", "value2" };
+            return _funcManager.Functions;
         }
 
         // GET api/functions/foo
         [HttpGet("{name}")]
         public string Get(string name)
         {
-            return "value";
+            return name;
         }
 
         // PUT api/functions/foo

@@ -31,7 +31,7 @@ namespace FuncLite
             CreateNewAppsIfNeeded().Wait();
 
             // Keep all the free apps warm every minute
-            new Timer(o => WarmUpFreeApps().Wait(), null, 0, 60000);
+            new Timer(_ => WarmUpFreeApps().Wait(), null, 0, 60000);
         }
 
         public App GetApp()
