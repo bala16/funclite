@@ -32,7 +32,17 @@ namespace FuncLite
             WarmUpFreeApps().Wait();
         }
 
-        private async Task Init()
+        public App GetApp()
+        {
+            if (_freeApps.Count == 0)
+            {
+                throw new Exception("There are no available function workers!");
+            }
+
+            return _freeApps.Dequeue();
+        }
+
+        async Task Init()
         {
             await CreateResourceGroup(_config.ResourceGroup);
 

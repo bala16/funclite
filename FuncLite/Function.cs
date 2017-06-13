@@ -8,11 +8,13 @@ namespace FuncLite
 {
     public class Function
     {
+        readonly AppManager _appManager;
         Dictionary<int, FunctionVersion> _versions = new Dictionary<int, FunctionVersion>();
         readonly string _folder;
 
-        public Function(string folder)
+        public Function(AppManager appManager, string folder)
         {
+            _appManager = appManager;
             _folder = folder;
             Directory.CreateDirectory(_folder);
         }
@@ -29,7 +31,7 @@ namespace FuncLite
                 await zipContent.CopyToAsync(zip);
             }
 
-            _versions[newVersion] = new FunctionVersion(packagePath);
+            _versions[newVersion] = new FunctionVersion(_appManager, packagePath);
         }
 
         int GetLatestVersion()

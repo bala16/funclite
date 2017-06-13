@@ -31,7 +31,7 @@ namespace FuncLite
         {
             if (!_functions.TryGetValue(name, out Function function))
             {
-                function = new Function(Path.Combine(_functionsFolder, name));
+                function = new Function(_appManager, Path.Combine(_functionsFolder, name));
                 _functions[name] = function;
             }
 
