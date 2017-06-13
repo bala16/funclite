@@ -34,6 +34,18 @@ namespace FuncLite
             _versions[newVersion] = new FunctionVersion(_appManager, packagePath);
         }
 
+        public async Task Run()
+        {
+            int latestVersion = GetLatestVersion();
+            if (latestVersion <= 0)
+            {
+                throw new Exception($"Function doesn'thave any versions");
+            }
+
+            var funcVersion = _versions[latestVersion];
+            await funcVersion.Run();
+        }
+
         int GetLatestVersion()
         {
             return _versions.Keys.OrderByDescending(v => v).FirstOrDefault();

@@ -45,9 +45,9 @@ namespace FuncLite.Controllers
         // POST api/functions/foo/run
         [HttpPost]
         [Route("{name}/run")]
-        public void Run(string name, [FromBody]string value)
+        public async Task Run(string name, [FromBody]string value)
         {
-
+            await _funcManager.Run(name);
         }
 
         // DELETE api/functions/foo

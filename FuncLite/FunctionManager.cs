@@ -27,6 +27,16 @@ namespace FuncLite
             return function;
         }
 
+        public async Task Run(string name)
+        {
+            if (!_functions.TryGetValue(name, out Function function))
+            {
+                throw new FileNotFoundException($"Function {name} does not exist");
+            }
+
+            await function.Run();
+        }
+
         Function GetFunction(string name)
         {
             if (!_functions.TryGetValue(name, out Function function))

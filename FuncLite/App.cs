@@ -58,11 +58,27 @@ namespace FuncLite
             _siteProps = siteProps;
         }
 
-        public string ScmBaseUrl
+        string ScmBaseUrl
         {
             get
             {
                 return $"https://{_siteProps.enabledHostNames[1]}";
+            }
+        }
+
+        public async Task SendWarmUpRequest()
+        {
+            using (var response = await _client.GetAsync(ScmBaseUrl))
+            {
+                response.EnsureSuccessStatusCode();
+            }
+        }
+
+        public async Task SendRequest(object payload)
+        {
+            using (var response = await _client.PutAsJsonAsync(ScmBaseUrl, payload))
+            {
+                response.EnsureSuccessStatusCode();
             }
         }
 
@@ -81,22 +97,6 @@ namespace FuncLite
             {
                 // Ignore errors as suiciding the scm w3wp can cause the delete request to fail (even though it still kills it)
                 //response.EnsureSuccessStatusCode();
-            }
-        }
-
-        public async Task SendWarmUpRequest()
-        {
-            using (var response = await _client.GetAsync(ScmBaseUrl))
-            {
-                response.EnsureSuccessStatusCode();
-            }
-        }
-
-        public async Task SendRequest(object payload)
-        {
-            using (var response = await _client.PutAsJsonAsync(ScmBaseUrl, payload))
-            {
-                response.EnsureSuccessStatusCode();
             }
         }
     }
