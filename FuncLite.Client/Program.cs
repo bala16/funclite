@@ -202,8 +202,8 @@ namespace FuncLite.Client
                         }
                         else
                         {
-                            //TODO
-                            Console.WriteLine("NOT YET SUPPORTED");
+                            Function function = await client.GetFunctionAsync(name.Value);
+                            Console.WriteLine(function.ToString());
                         }
                         
                         return 0;

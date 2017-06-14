@@ -29,9 +29,11 @@ namespace FuncLite.Controllers
 
         // GET api/functions/foo
         [HttpGet("{name}")]
-        public string Get(string name)
+        public JObject Get(string name)
         {
-            return name;
+            JObject functionWireObject = new JObject();
+            functionWireObject.Add("name", name);
+            return functionWireObject;
         }
 
 
