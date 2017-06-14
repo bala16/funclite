@@ -14,6 +14,7 @@ namespace FuncLite
         readonly HttpClient _client;
         readonly MyConfig _config;
         readonly Queue<App> _freeApps = new Queue<App>();
+        readonly Queue<App> _appsToMarkAsInUse = new Queue<App>();
 
         public AppManager(IOptions<MyConfig> config)
         {
@@ -30,8 +31,7 @@ namespace FuncLite
 
             CreateNewAppsIfNeeded().Wait();
 
-            // Keep all the free apps warm every minute
-            new Timer(_ => WarmUpFreeApps().Wait(), null, 0, 60000);
+            new Timer(_ => BackgrounMaintenance().Wait(), null, 0, 60000);
         }
 
         public App GetApp()
@@ -41,7 +41,11 @@ namespace FuncLite
                 throw new Exception("There are no available function workers!");
             }
 
-            return _freeApps.Dequeue();
+            var app = _freeApps.Dequeue();
+
+            _appsToMarkAsInUse.Enqueue(app);
+
+            return app;
         }
 
         async Task Init()
@@ -72,11 +76,30 @@ namespace FuncLite
                 response.EnsureSuccessStatusCode();
 
                 var json = await response.Content.ReadAsAsync<dynamic>();
+
+                // Following code is quite ugly. Idea is to delete any site that was previously in use to only start with clean ones
+                var inUseAppTasks = new List<Task<App>>();
                 foreach (var appProps in json.value)
                 {
                     var app = new App(_client, _config, appProps.properties);
-                    _freeApps.Enqueue(app);
+
+                    inUseAppTasks.Add(app.GetInUseState());
                 }
+
+                var deleteTasks = new List<Task>();
+                foreach (var app in await Task.WhenAll(inUseAppTasks))
+                {
+                    if (app.InUse)
+                    {
+                        deleteTasks.Add(app.Delete());
+                    }
+                    else
+                    {
+                        _freeApps.Enqueue(app);
+                    }
+                }
+
+                await Task.WhenAll(deleteTasks);
             }
         }
 
@@ -96,12 +119,36 @@ namespace FuncLite
             }
         }
 
+        async Task BackgrounMaintenance()
+        {
+            try
+            {
+                var tasksmarkInUseTasks = new List<Task>();
+                while (_appsToMarkAsInUse.Count > 0)
+                {
+                    tasksmarkInUseTasks.Add(_appsToMarkAsInUse.Dequeue().MarkAsUsed());
+                }
+                await Task.WhenAll(tasksmarkInUseTasks);
+
+                // Create new apps if needed
+                await CreateNewAppsIfNeeded();
+
+                // Warm up all the apps in the free queue
+                await WarmUpFreeApps();
+            }
+            catch (Exception e)
+            {
+                // Ignore background task exceptions
+            }
+        }
+
         async Task WarmUpFreeApps()
         {
+            // Keep all the free apps warm
             var appRefreshTasks = new List<Task>();
             foreach (var app in _freeApps)
             {
-                appRefreshTasks.Add(app.SendWarmUpRequest());
+                appRefreshTasks.Add(app.SendWarmUpRequests());
             }
 
             await Task.WhenAll(appRefreshTasks);

@@ -8,6 +8,7 @@ namespace FuncLite
 {
     public class App
     {
+        readonly string _appName;
         readonly dynamic _siteProps;
         readonly HttpClient _client;
         readonly MyConfig _config;
@@ -52,6 +53,7 @@ namespace FuncLite
             _client = client;
             _config = config;
             _siteProps = siteProps;
+            _appName = siteProps.name;
         }
 
         string ScmBaseUrl
@@ -62,6 +64,8 @@ namespace FuncLite
             }
         }
 
+        public bool InUse { get; private set; }
+
         async Task CompleteCreation()
         {
             // Upload the lightweight host
@@ -71,7 +75,7 @@ namespace FuncLite
             await Restart();
         }
 
-        public async Task SendWarmUpRequest()
+        public async Task SendWarmUpRequests()
         {
             // As a warmup request, create the folder where the user files will land, to make sure it's there is the site restarts
             await CreateKuduFolder(@"d:\local\funclite");
@@ -102,6 +106,47 @@ namespace FuncLite
                 }))
             {
                 response.EnsureSuccessStatusCode();
+            }
+        }
+
+        public async Task Delete()
+        {
+            using (var response = await _client.DeleteAsync(
+                $"/subscriptions/{_config.Subscription}/resourceGroups/{_config.ResourceGroup}/providers/Microsoft.Web/sites/{_appName}?api-version=2016-03-01"))
+            {
+                response.EnsureSuccessStatusCode();
+            }
+        }
+
+        public async Task MarkAsUsed()
+        {
+            // Mark it as used using the metadata collection, since that doesn't restart the site
+            using (var response = await _client.PutAsJsonAsync(
+                $"/subscriptions/{_config.Subscription}/resourceGroups/{_config.ResourceGroup}/providers/Microsoft.Web/sites/{_appName}/config/metadata?api-version=2016-03-01",
+                new
+                {
+                    properties = new
+                    {
+                        IN_USE = 1
+                    }
+                }))
+            {
+                response.EnsureSuccessStatusCode();
+            }
+        }
+
+        public async Task<App> GetInUseState()
+        {
+            using (var response = await _client.PostAsync(
+                $"/subscriptions/{_config.Subscription}/resourceGroups/{_config.ResourceGroup}/providers/Microsoft.Web/sites/{_appName}/config/metadata/list?api-version=2016-03-01",
+                null
+            ))
+            {
+                response.EnsureSuccessStatusCode();
+
+                var json = await response.Content.ReadAsAsync<dynamic>();
+                InUse = (json.properties.IN_USE == "1");
+                return this;
             }
         }
 
