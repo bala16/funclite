@@ -7,6 +7,8 @@
     
   <PropertyGroup>
     <CustomBuildBeforeTargets>ClCompile</CustomBuildBeforeTargets>
+    <PreBuildEvent>autorest ..\..\..\readme.md
+</PreBuildEvent>
   </PropertyGroup>
   
   <ItemGroup>
