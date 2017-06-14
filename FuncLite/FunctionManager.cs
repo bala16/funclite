@@ -1,4 +1,5 @@
-﻿using Microsoft.Extensions.Options;
+﻿using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using Newtonsoft.Json.Linq;
 using System;
 using System.Collections.Generic;
@@ -14,7 +15,7 @@ namespace FuncLite
         readonly string _functionsFolder;
         Dictionary<string, Function> _functions = new Dictionary<string, Function>(StringComparer.OrdinalIgnoreCase);
 
-        public FunctionManager(IOptions<MyConfig> config, AppManager appManager)
+        public FunctionManager(IOptions<MyConfig> config, AppManager appManager, ILogger<FunctionManager> logger)
         {
             _appManager = appManager;
             _functionsFolder = Path.Combine(config.Value.DataFolder, "Functions");

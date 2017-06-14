@@ -42,6 +42,7 @@ namespace FuncLite
         {
             loggerFactory.AddConsole(Configuration.GetSection("Logging"));
             loggerFactory.AddDebug();
+            loggerFactory.AddFile("Logs/myapp.txt");
 
             if (env.IsDevelopment())
             {
