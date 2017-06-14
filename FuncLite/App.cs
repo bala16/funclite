@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Microsoft.Extensions.Logging;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Net.Http;
@@ -12,8 +13,9 @@ namespace FuncLite
         readonly dynamic _siteProps;
         readonly HttpClient _client;
         readonly MyConfig _config;
+        readonly ILogger<AppManager> _logger;
 
-        public static async Task<App> CreateApp(HttpClient client, MyConfig config, string appName)
+        public static async Task<App> CreateApp(HttpClient client, MyConfig config, ILogger<AppManager> logger, string appName)
         {
             using (var response = await client.PutAsJsonAsync(
                 $"/subscriptions/{config.Subscription}/resourceGroups/{config.ResourceGroup}/providers/Microsoft.Web/sites/{appName}?api-version=2016-03-01",
@@ -40,7 +42,7 @@ namespace FuncLite
                 response.EnsureSuccessStatusCode();
 
                 var json = await response.Content.ReadAsAsync<dynamic>();
-                var app = new App(client, config, json.properties);
+                var app = new App(client, config, logger, json.properties);
 
                 await app.CompleteCreation();
 
@@ -48,10 +50,11 @@ namespace FuncLite
             }
         }
 
-        public App(HttpClient client, MyConfig config, dynamic siteProps)
+        public App(HttpClient client, MyConfig config, ILogger<AppManager> logger, dynamic siteProps)
         {
             _client = client;
             _config = config;
+            _logger = logger;
             _siteProps = siteProps;
             _appName = siteProps.name;
         }
@@ -66,6 +69,8 @@ namespace FuncLite
 
         public bool InUse { get; private set; }
 
+        public string Name => _appName;
+
         async Task CompleteCreation()
         {
             // Upload the lightweight host
@@ -78,12 +83,16 @@ namespace FuncLite
         public async Task SendWarmUpRequests()
         {
             // As a warmup request, create the folder where the user files will land, to make sure it's there is the site restarts
+            _logger.LogInformation($"Warming up Kudu on {_appName}");
             await CreateKuduFolder(@"d:\local\funclite");
 
+            _logger.LogInformation($"Warming up /funclite on {_appName}");
             using (var response = await _client.GetAsync($"{ScmBaseUrl}/funclite"))
             {
+                _logger.LogInformation($"Done warming up /funclite on {_appName}");
                 response.EnsureSuccessStatusCode();
             }
+
         }
 
         public async Task<dynamic> SendRequest(object payload)
