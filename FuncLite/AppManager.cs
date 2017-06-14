@@ -1,4 +1,5 @@
 ﻿using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using System;
 using System.Collections.Generic;
@@ -16,9 +17,10 @@ namespace FuncLite
         readonly Queue<App> _freeApps = new Queue<App>();
         readonly Queue<App> _appsToMarkAsInUse = new Queue<App>();
 
-        public AppManager(IOptions<MyConfig> config)
+        public AppManager(IOptions<MyConfig> config, ILogger<AppManager> logger)
         {
             _config = config.Value;
+            Logger = logger;
 
             string token = AuthenticationHelpers.AcquireTokenBySPN(
                 _config.TenantId, _config.ClientId, _config.ClientSecret).Result;
@@ -33,6 +35,8 @@ namespace FuncLite
 
             new Timer(_ => BackgrounMaintenance().Wait(), null, 0, 60000);
         }
+
+        public ILogger<AppManager> Logger { get; private set; }
 
         public App GetApp()
         {
@@ -81,7 +85,7 @@ namespace FuncLite
                 var inUseAppTasks = new List<Task<App>>();
                 foreach (var appProps in json.value)
                 {
-                    var app = new App(_client, _config, appProps.properties);
+                    var app = new App(_client, _config, Logger, appProps.properties);
 
                     inUseAppTasks.Add(app.GetInUseState());
                 }
@@ -110,7 +114,7 @@ namespace FuncLite
             var newAppTasks = new List<Task<App>>();
             for (int i=0; i < neededApps; i++)
             {
-                newAppTasks.Add(App.CreateApp(_client, _config, "funclite-" + Guid.NewGuid().ToString()));
+                newAppTasks.Add(App.CreateApp(_client, _config, Logger, "funclite-" + Guid.NewGuid().ToString()));
             }
 
             foreach (var app in await Task.WhenAll(newAppTasks))
