@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Microsoft.Extensions.Logging;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Net.Http;
@@ -11,32 +12,32 @@ namespace FuncLite
     // LoggingHandler derived from http://stackoverflow.com/questions/12300458/web-api-audit-logging
     public class LoggingHandler : DelegatingHandler
     {
-        public LoggingHandler(HttpMessageHandler innerHandler)
+        readonly ILogger _logger;
+
+        public LoggingHandler(HttpMessageHandler innerHandler, ILogger logger)
             : base(innerHandler)
         {
+            _logger = logger;
         }
 
         protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
         {
-            Console.WriteLine("*********************");
-            Console.Write("Request: ");
-            Console.WriteLine("{0} {1}", request.Method, request.RequestUri);
-            if (request.Content != null)
-            {
-                Console.WriteLine(await request.Content.ReadAsStringAsync());
-            }
-            Console.WriteLine();
-
+            DateTime start = DateTime.Now;
+            _logger.LogInformation($"Sending {request.Method} {request.RequestUri}");
             HttpResponseMessage response = await base.SendAsync(request, cancellationToken);
 
-            Console.Write("Response: ");
-            Console.WriteLine("{0} {1}", (int)response.StatusCode, response.ReasonPhrase);
+            var statusCode = response.StatusCode;
+            TimeSpan timeTaken = DateTime.Now - start;
+            _logger.LogInformation($"Done {request.Method} {request.RequestUri} --> {statusCode} in {timeTaken.TotalMilliseconds:0}ms");
             if (response.Content != null)
             {
                 string responseContent = await response.Content.ReadAsStringAsync();
-                Console.WriteLine(responseContent);
+
+                if (((int)statusCode) >= 400)
+                {
+                    _logger.LogError(responseContent);
+                }
             }
-            Console.WriteLine();
 
             return response;
         }

@@ -13,9 +13,9 @@ namespace FuncLite
         readonly dynamic _siteProps;
         readonly HttpClient _client;
         readonly MyConfig _config;
-        readonly ILogger<AppManager> _logger;
+        readonly ILogger _logger;
 
-        public static async Task<App> CreateApp(HttpClient client, MyConfig config, ILogger<AppManager> logger, string appName)
+        public static async Task<App> CreateApp(HttpClient client, MyConfig config, ILogger logger, string appName)
         {
             using (var response = await client.PutAsJsonAsync(
                 $"/subscriptions/{config.Subscription}/resourceGroups/{config.ResourceGroup}/providers/Microsoft.Web/sites/{appName}?api-version=2016-03-01",
@@ -50,7 +50,7 @@ namespace FuncLite
             }
         }
 
-        public App(HttpClient client, MyConfig config, ILogger<AppManager> logger, dynamic siteProps)
+        public App(HttpClient client, MyConfig config, ILogger logger, dynamic siteProps)
         {
             _client = client;
             _config = config;
@@ -83,13 +83,10 @@ namespace FuncLite
         public async Task SendWarmUpRequests()
         {
             // As a warmup request, create the folder where the user files will land, to make sure it's there is the site restarts
-            _logger.LogInformation($"Warming up Kudu on {_appName}");
             await CreateKuduFolder(@"d:\local\funclite");
 
-            _logger.LogInformation($"Warming up /funclite on {_appName}");
             using (var response = await _client.GetAsync($"{ScmBaseUrl}/funclite"))
             {
-                _logger.LogInformation($"Done warming up /funclite on {_appName}");
                 response.EnsureSuccessStatusCode();
             }
 
