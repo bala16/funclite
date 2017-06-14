@@ -74,7 +74,7 @@
                     "type": "string"
                 }
             ],
-          "put": {
+          "post": {
             "operationId": "CreateUpdateFunction",
             "summary": "Create or update a function",
             "description": "",

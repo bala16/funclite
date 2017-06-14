@@ -11,7 +11,7 @@ namespace FuncLite.Client
 {
     class Program
     {
-        const string backendURL = "https://functions.azure.com";
+        const string backendURL = "http://localhost:1441";
         const string archiveFileName = "funcLitePackage.zip";
 
         static void Main(string[] args)
@@ -89,9 +89,11 @@ namespace FuncLite.Client
                     {
                         return await onExecuteFunction.Invoke();
                     }
-                    catch (Microsoft.Rest.HttpOperationException)
+                    catch (Microsoft.Rest.HttpOperationException e)
                     {
                         Console.Error.WriteLine("Error communicating with server");
+                        Console.Error.WriteLine(e.Message);
+                        Console.Error.WriteLine(e.StackTrace);
                         return 1;
                     }
                     
