@@ -67,8 +67,10 @@ namespace FuncLite.Controllers
 
         // DELETE api/functions/foo
         [HttpDelete("{name}")]
-        public void Delete(int name)
+        public async Task<IActionResult> Delete(int name)
         {
+            //TODO
+            return NoContent();
         }
     }
 }
