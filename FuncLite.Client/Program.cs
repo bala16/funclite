@@ -25,7 +25,6 @@ namespace FuncLite.Client
 
             cli.RegisterPublish();
             cli.RegisterDelete();
-            cli.RegisterDetails();
 
             cli.RegisterGetVersions();
 
@@ -47,24 +46,21 @@ namespace FuncLite.Client
                 client = new FunctionsLite(new Uri(url));
                 application = new CommandLineApplication();
                 application.HelpOption("-? | -h | --help");
-                functionCommand = application.Command("function", (command) =>
-                {
-                    command.HelpOption("--help");
-                    command.OnExecute(() =>
-                    {
-                        Console.WriteLine(command.GetHelpText());
-                        return 1;
-                    });
-                });
+                functionCommand = GetFunctionCommand();
             }
 
             public int Parse(string[] args)
             {
                 try
                 {
+                    if (args.Length == 0)
+                    {
+                        application.ShowHint();
+                        throw new Exception();
+                    }
                     return application.Execute(args);
                 }
-                catch (CommandParsingException)
+                catch (Exception)
                 {
                     Console.WriteLine(application.GetHelpText());
                     return 1;
@@ -73,9 +69,10 @@ namespace FuncLite.Client
 
           
 
-            private void NormalizeCommand(CommandLineApplication command, Func<Task<int>> onExecuteFunction)
+            private void NormalizeCommand(CommandLineApplication command, string description, Func<Task<int>> onExecuteFunction)
             {
                 command.HelpOption("--help");
+                command.Description = description;
                 command.OnExecute(async () =>
                 {
                     if (command.Arguments.Exists(arg => arg.Value == null))
@@ -103,7 +100,7 @@ namespace FuncLite.Client
             public void RegisterList()
             {
                 application.Command("list", (command) => {
-                   NormalizeCommand(command, async () =>
+                   NormalizeCommand(command, "Lists your functions", async () =>
                     {
                         IList<string> functions = await client.ListFunctionsAsync();
                         foreach(string f in functions)
@@ -123,7 +120,7 @@ namespace FuncLite.Client
                 functionCommand.Command("publish", (command) => {
                     name = command.Argument("functionName", "The name of the target function");
                     path = command.Argument("path", "The files to be published");
-                    NormalizeCommand(command, async () =>
+                    NormalizeCommand(command, "Publishes function code, creating the function if necessary", async () =>
                     {
                         //Load in path and establish language
                         string language = null;
@@ -173,9 +170,9 @@ namespace FuncLite.Client
             public void RegisterGetVersions()
             {
                 CommandArgument name = null;
-                functionCommand.Command("versions", (command) => {
+                functionCommand.Command("*versions", (command) => {
                     name = command.Argument("functionName", "The name of the target function");
-                    NormalizeCommand(command, async () =>
+                    NormalizeCommand(command, "UNIMPLEMENTED - Lists the versions for a function", async () =>
                     {
                         IList<VersionInfo> versions = await client.ListVersionsForFunctionAsync(name.Value);
                         foreach (VersionInfo v in versions)
@@ -187,25 +184,26 @@ namespace FuncLite.Client
                 });
             }
 
-            public void RegisterDetails()
+            private CommandLineApplication GetFunctionCommand()
             {
                 CommandArgument name = null;
                 CommandOption version = null;
-                functionCommand.Command("detail", (command) => {
+                return application.Command("function", (command) => {
                     name = command.Argument("functionName", "The name of the target function");
                     version = command.Option("-v | --version", "A specific version to read", CommandOptionType.SingleValue);
-                    NormalizeCommand(command, async () =>
+                    NormalizeCommand(command, "Gets details about a function and exposes additional commands", async () =>
                     {
-                        if (version.HasValue()) {
+                        if (version.HasValue())
+                        {
                             VersionInfo v = await client.GetVersionOfFunctionAsync(name.Value, version.Value());
                             Console.WriteLine(v.ToString());
                         }
                         else
                         {
                             Function function = await client.GetFunctionAsync(name.Value);
-                            Console.WriteLine(function.ToString());
+                            Console.WriteLine(function.Name);
                         }
-                        
+
                         return 0;
                     });
                 });
@@ -219,7 +217,7 @@ namespace FuncLite.Client
                 functionCommand.Command("delete", (command) => {
                     name = command.Argument("functionName", "The name of the target function");
                     version = command.Option("-v | --version", "A specific version to delete", CommandOptionType.SingleValue);
-                    NormalizeCommand(command, async () =>
+                    NormalizeCommand(command,"Deletes a function", async () =>
                     {
                         
                         if (ConfirmDeletion(name.Value))
@@ -256,10 +254,10 @@ namespace FuncLite.Client
             {
                 CommandArgument name = null;
                 CommandOption invocation = null;
-                functionCommand.Command("logs", (command) => {
+                functionCommand.Command("*logs", (command) => {
                     name = command.Argument("functionName", "The name of the target function");
                     invocation = command.Option("-i | --invocation", "A specific invocation to get logs for", CommandOptionType.SingleValue);
-                    NormalizeCommand(command, async () =>
+                    NormalizeCommand(command, "UNIMPLEMENTED - Gets the logs for a function", async () =>
                     {
                         if (invocation.HasValue())
                         {
