@@ -11,7 +11,7 @@ namespace FuncLite.Client
 {
     class Program
     {
-        const string backendURL = "http://localhost:1441";
+        const string backendURL = "http://funclite.azurewebsites.net";
         const string archiveFileName = "funcLitePackage.zip";
 
         static void Main(string[] args)
@@ -105,10 +105,10 @@ namespace FuncLite.Client
                 application.Command("list", (command) => {
                    NormalizeCommand(command, async () =>
                     {
-                        IList<Function> functions = await client.ListFunctionsAsync();
-                        foreach(Function f in functions)
+                        IList<string> functions = await client.ListFunctionsAsync();
+                        foreach(string f in functions)
                         {
-                            Console.WriteLine(f.ToString());
+                            Console.WriteLine(f);
                         }
                         return 0;
                     });

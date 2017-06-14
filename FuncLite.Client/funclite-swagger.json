@@ -13,7 +13,7 @@
         "http"
     ],
     "paths": {
-        "/run/{functionName}": {
+        "/api/functions/{functionName}/run": {
             "parameters": [
                 {
                     "name": "functionName",
@@ -24,7 +24,7 @@
                 }
             ]
         },
-        "/run/{functionName}/{versionId}": {
+        "/api/functions/{functionName}/{versionId}/run": {
             "parameters": [
                 {
                     "name": "functionName",
@@ -42,7 +42,7 @@
                 }
             ]
         },
-        "/admin/functions": {
+        "/api/functions": {
             "get": {
                 "operationId": "ListFunctions",
                 "summary": "Lists the functions",
@@ -57,14 +57,14 @@
                         "schema": {
                             "type": "array",
                             "items": {
-                                "$ref": "#/definitions/Function"
+                                "type":  "string"
                             }
                         }
                     }
                 }
             }
         },
-        "/admin/functions/{functionName}": {
+        "/api/functions/{functionName}": {
             "parameters": [
                 {
                     "name": "functionName",
@@ -101,10 +101,15 @@
               }
             ],
             "responses": {
-              "201": {
+              "200": {
                 "description": "successful operation",
                 "schema": {
-                  "$ref": "#/definitions/VersionInfo"
+                  "type": "object",
+                  "properties": {
+                    "result": {
+                      "type": "string"
+                    }
+                  }
                 }
               }
             }
