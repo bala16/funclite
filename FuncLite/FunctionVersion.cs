@@ -24,14 +24,10 @@ namespace FuncLite
             if (_app == null)
             {
                 _app = _appManager.GetApp();
-                _appManager.Logger.LogInformation($"Uploading package for ${_app.Name}");
                 await _app.UploadUserCode(_zipPackagePath);
-                _appManager.Logger.LogInformation($"Done uploading package for ${_app.Name}");
             }
 
-            _appManager.Logger.LogInformation($"Sending request for ${_app.Name}");
             var json = await _app.SendRequest(new { functionBody = requestBody });
-            _appManager.Logger.LogInformation($"Done sending request for ${_app.Name}");
             return json.functionBody;
         }
     }

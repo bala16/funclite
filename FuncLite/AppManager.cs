@@ -25,7 +25,7 @@ namespace FuncLite
             string token = AuthenticationHelpers.AcquireTokenBySPN(
                 _config.TenantId, _config.ClientId, _config.ClientSecret).Result;
 
-            _client = new HttpClient(new LoggingHandler(new HttpClientHandler()));
+            _client = new HttpClient(new LoggingHandler(new HttpClientHandler(), logger));
             _client.DefaultRequestHeaders.Add("Authorization", "Bearer " + token);
             _client.BaseAddress = new Uri("https://management.azure.com/");
 
