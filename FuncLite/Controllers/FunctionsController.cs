@@ -34,6 +34,20 @@ namespace FuncLite.Controllers
             return name;
         }
 
+
+        // POST api/functions/foo
+        [HttpPost("{name}")]
+        public async Task<IActionResult> Post([FromRoute] string name, IFormCollection formData)
+        {
+            string language = formData.Where(kvp => kvp.Key.Equals("language")).FirstOrDefault().Value.FirstOrDefault();
+            IFormFile file = formData.Files.Where(f => f.FileName.EndsWith(".zip")).FirstOrDefault();
+
+            await _funcManager.Create(name, file.OpenReadStream());
+
+            return Ok(new { result = "function created" });
+        }
+
+        //TODO remove?
         // PUT api/functions/foo
         [HttpPut("{name}")]
         public async Task<IActionResult> Put(string name)
