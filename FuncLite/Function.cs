@@ -111,8 +111,8 @@ namespace FuncLite
         public async Task DeleteVersion(int version)
         {
             var funcVersion = GetFunctionVersion(version);
-            await funcVersion.Delete();
             _versions.Remove(version);
+            await funcVersion.Delete();
 
             string versionFolderPath = Path.Combine(_folder, version.ToString());
             Directory.Delete(versionFolderPath, recursive: true);
