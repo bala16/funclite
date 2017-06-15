@@ -66,6 +66,16 @@ namespace FuncLite
             }
         }
 
+        protected override async Task RestartScmSite()
+        {
+            // Just kill the scm site to restart it (faster than full site restart)
+            using (var response = await Client.DeleteAsync($"{ScmBaseUrl}/api/processes/0"))
+            {
+                // Ignore errors as suiciding the scm w3wp can cause the delete request to fail (even though it still kills it)
+                //response.EnsureSuccessStatusCode();
+            }
+        }
+
         async Task CreateKuduFolder(string folder)
         {
             await RunKuduCommand($"mkdir {folder}");

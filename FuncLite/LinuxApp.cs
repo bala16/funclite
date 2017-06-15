@@ -85,9 +85,9 @@ namespace FuncLite
             }
         }
 
-        protected internal override async Task<dynamic> SendRequest(object payload)
+        protected internal override Task<dynamic> SendRequest(object payload)
         {
-            return Task.CompletedTask;
+            return null;
         }
 
     }

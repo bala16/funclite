@@ -88,14 +88,10 @@ namespace FuncLite
         protected abstract Task UploadLanguageHost();
         protected internal abstract Task<dynamic> SendRequest(object payload);
 
-        async Task Restart()
+        protected virtual Task RestartScmSite()
         {
-            // Just kill the scm site to restart it (faster than full site restart)
-            using (var response = await Client.DeleteAsync($"{ScmBaseUrl}/api/processes/0"))
-            {
-                // Ignore errors as suiciding the scm w3wp can cause the delete request to fail (even though it still kills it)
-                //response.EnsureSuccessStatusCode();
-            }
+            // Do nothing here as Linux doesn't need that
+            return Task.CompletedTask;
         }
 
         protected async Task CompleteCreation()
@@ -104,7 +100,7 @@ namespace FuncLite
             await UploadLanguageHost();
 
             // Restart the app so the site extension takes effect in the scm site
-            await Restart();
+            await RestartScmSite();
         }
 
     }
