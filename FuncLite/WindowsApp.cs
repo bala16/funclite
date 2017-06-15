@@ -11,13 +11,10 @@ namespace FuncLite
     public class WindowsApp : BaseApp
     {
         private readonly MyConfig _config;
-        readonly ILogger _logger;
-        HttpClient _scmClient;
 
         public WindowsApp(HttpClient client, MyConfig config, ILogger logger, dynamic siteProps) : base(client, config, logger, new SitePropsWrapper(siteProps), Language.Node)
         {
             _config = config;
-            _logger = logger;
         }
 
         protected override async Task UploadLanguageHost()
@@ -25,7 +22,7 @@ namespace FuncLite
             await CreateKuduFolder(@"d:\home\SiteExtensions\FuncLite");
 
             await EnsureScmHttpClient();
-            using (var response = await _scmClient.PutZipFile($"{ScmBaseUrl}/api/zip/SiteExtensions/FuncLite", $"{_config.DataFolder}/runtimes/node.zip"))
+            using (var response = await ScmClient.PutZipFile($"{ScmBaseUrl}/api/zip/SiteExtensions/FuncLite", $"{_config.DataFolder}/runtimes/node.zip"))
             {
                 response.EnsureSuccessStatusCode();
             }
@@ -66,16 +63,6 @@ namespace FuncLite
             }
         }
 
-        protected override async Task RestartScmSite()
-        {
-            // Just kill the scm site to restart it (faster than full site restart)
-            using (var response = await Client.DeleteAsync($"{ScmBaseUrl}/api/processes/0"))
-            {
-                // Ignore errors as suiciding the scm w3wp can cause the delete request to fail (even though it still kills it)
-                //response.EnsureSuccessStatusCode();
-            }
-        }
-
         async Task CreateKuduFolder(string folder)
         {
             await RunKuduCommand($"mkdir {folder}");
@@ -85,7 +72,7 @@ namespace FuncLite
         {
             await EnsureScmHttpClient();
 
-            using (var response = await _scmClient.PostAsJsonAsync(
+            using (var response = await ScmClient.PostAsJsonAsync(
                 $"{ScmBaseUrl}/api/command",
                 new
                 {
@@ -99,7 +86,7 @@ namespace FuncLite
         public async Task UploadUserCode(string zipPackagePath)
         {
             await EnsureScmHttpClient();
-            using (var response = await _scmClient.PutZipFile($"{ScmBaseUrl}/api/zip/LocalSiteRoot/funclite", zipPackagePath))
+            using (var response = await ScmClient.PutZipFile($"{ScmBaseUrl}/api/zip/LocalSiteRoot/funclite", zipPackagePath))
             {
                 response.EnsureSuccessStatusCode();
             }
@@ -111,7 +98,7 @@ namespace FuncLite
             await CreateKuduFolder(@"d:\local\funclite");
 
             await EnsureScmHttpClient();
-            using (var response = await _scmClient.GetAsync($"{ScmBaseUrl}/funclite"))
+            using (var response = await ScmClient.GetAsync($"{ScmBaseUrl}/funclite"))
             {
                 response.EnsureSuccessStatusCode();
             }
@@ -121,7 +108,7 @@ namespace FuncLite
         {
             // Just kill the scm site to restart it (faster than full site restart)
             await EnsureScmHttpClient();
-            using (var response = await _scmClient.DeleteAsync($"{ScmBaseUrl}/api/processes/0"))
+            using (var response = await ScmClient.DeleteAsync($"{ScmBaseUrl}/api/processes/0"))
             {
                 // Ignore errors as suiciding the scm w3wp can cause the delete request to fail (even though it still kills it)
                 //response.EnsureSuccessStatusCode();
@@ -136,38 +123,17 @@ namespace FuncLite
                 response.EnsureSuccessStatusCode();
             }
 
-            if (_scmClient != null)
+            if (ScmClient != null)
             {
-                _scmClient.Dispose();
-                _scmClient = null;
-            }
-        }
-
-
-        async Task EnsureScmHttpClient()
-        {
-            if (_scmClient == null)
-            {
-                using (var response = await Client.PostAsync(
-                    $"/subscriptions/{_config.Subscription}/resourceGroups/{_config.ResourceGroup}/providers/Microsoft.Web/sites/{AppName}/config/publishingcredentials/list?api-version=2016-03-01",
-                    null
-                ))
-                {
-                    response.EnsureSuccessStatusCode();
-
-                    var json = await response.Content.ReadAsAsync<dynamic>();
-
-                    _scmClient = new HttpClient(new LoggingHandler(new HttpClientHandler(), _logger));
-                    var byteArray = Encoding.ASCII.GetBytes($"{json.properties.publishingUserName}:{json.properties.publishingPassword}");
-                    _scmClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Basic", Convert.ToBase64String(byteArray));
-                }
+                ScmClient.Dispose();
+                ScmClient = null;
             }
         }
 
         protected internal override async Task<dynamic> SendRequest(object payload)
         {
             await EnsureScmHttpClient();
-            using (var response = await _scmClient.PostAsJsonAsync($"{ScmBaseUrl}/funclite", payload))
+            using (var response = await ScmClient.PostAsJsonAsync($"{ScmBaseUrl}/funclite", payload))
             {
                 response.EnsureSuccessStatusCode();
 

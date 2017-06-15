@@ -36,15 +36,9 @@ namespace FuncLite
             get
             {
                 var functions = new List<string>();
-                foreach (KeyValuePair<Language, Dictionary<string, Function>> keyValuePair in _functions)
+                foreach (var value in _functions.Values)
                 {
-                    foreach (Function value in _functions[keyValuePair.Key].Values)
-                    {
-                        foreach (var function in value.GetAllFunctions())
-                        {
-                            functions.Add($"{keyValuePair.Key}/{function}");
-                        }
-                    }
+                    functions.AddRange(value.Keys);
                 }
                 return functions;
             }

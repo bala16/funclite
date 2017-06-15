@@ -79,15 +79,21 @@ namespace FuncLite
 
         public async Task UploadUserCode(string zipPackagePath)
         {
-            using (var response = await Client.PutZipFile($"{SiteUrl}/api/zip/home/site/wwwroot/test", zipPackagePath))
+            using (var response = await Client.PutZipFile($"{ScmBaseUrl}/api/zip/site/wwwroot/userFunc/", zipPackagePath))
             {
                 response.EnsureSuccessStatusCode();
             }
         }
 
-        protected internal override Task<dynamic> SendRequest(object payload)
+        protected internal override async Task<dynamic> SendRequest(object payload)
         {
-            return null;
+            await EnsureScmHttpClient();
+            using (var response = await ScmClient.PostAsJsonAsync($"{ScmBaseUrl}", payload))
+            {
+                response.EnsureSuccessStatusCode();
+
+                return await response.Content.ReadAsAsync<dynamic>();
+            }
         }
 
     }

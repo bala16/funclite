@@ -2,9 +2,10 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Net.Http;
+using System.Net.Http.Headers;
+using System.Text;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
-using System.Threading;
 
 namespace FuncLite
 {
@@ -14,6 +15,9 @@ namespace FuncLite
         private readonly dynamic _siteProps;
         protected readonly HttpClient Client;
         private readonly MyConfig _config;
+        protected HttpClient ScmClient;
+        readonly ILogger _logger;
+
         public Language Language { get; }
 
         protected BaseApp(HttpClient client, MyConfig config, ILogger logger, SitePropsWrapper sitePropsWrapper, Language language)
@@ -23,8 +27,28 @@ namespace FuncLite
             _siteProps = sitePropsWrapper.SiteProps;
             AppName = _siteProps.name;
             Language = language;
+            _logger = logger;
         }
 
+        protected async Task EnsureScmHttpClient()
+        {
+            if (ScmClient == null)
+            {
+                using (var response = await Client.PostAsync(
+                    $"/subscriptions/{_config.Subscription}/resourceGroups/{_config.ResourceGroup}/providers/Microsoft.Web/sites/{AppName}/config/publishingcredentials/list?api-version=2016-03-01",
+                    null
+                ))
+                {
+                    response.EnsureSuccessStatusCode();
+
+                    var json = await response.Content.ReadAsAsync<dynamic>();
+
+                    ScmClient = new HttpClient(new LoggingHandler(new HttpClientHandler(), _logger));
+                    var byteArray = Encoding.ASCII.GetBytes($"{json.properties.publishingUserName}:{json.properties.publishingPassword}");
+                    ScmClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Basic", Convert.ToBase64String(byteArray));
+                }
+            }
+        }
 
         public bool InUse { get; private set; }
 
