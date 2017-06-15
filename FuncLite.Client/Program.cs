@@ -56,13 +56,13 @@ namespace FuncLite.Client
                     if (args.Length == 0)
                     {
                         application.ShowHint();
-                        throw new Exception();
+                        throw new CommandParsingException(application,"No command was passed");
                     }
                     return application.Execute(args);
                 }
-                catch (Exception)
+                catch (CommandParsingException e)
                 {
-                    Console.WriteLine(application.GetHelpText());
+                    Console.WriteLine(e.Command.GetHelpText());
                     return 1;
                 }
             }
@@ -73,6 +73,11 @@ namespace FuncLite.Client
             {
                 command.HelpOption("--help");
                 command.Description = description;
+                CommandOption debugOption = command.Option("--debug", "Sets logs to verbose", CommandOptionType.NoValue);
+                debugOption.ShowInHelpText = false;
+                CommandOption hostOption = command.Option("--hostUrl", "Sets the host for the controller", CommandOptionType.SingleValue);
+                hostOption.ShowInHelpText = false;
+
                 command.OnExecute(async () =>
                 {
                     if (command.Arguments.Exists(arg => arg.Value == null))
@@ -84,13 +89,21 @@ namespace FuncLite.Client
 
                     try
                     {
+
+                        if (hostOption.HasValue())
+                        {
+                            client = new FunctionsLite(new Uri(hostOption.Value()));
+                        }
                         return await onExecuteFunction.Invoke();
                     }
-                    catch (Microsoft.Rest.HttpOperationException e)
+                    catch (Exception e) when (e is Microsoft.Rest.HttpOperationException || e is UriFormatException)
                     {
                         Console.Error.WriteLine("Error communicating with server");
-                        Console.Error.WriteLine(e.Message);
-                        Console.Error.WriteLine(e.StackTrace);
+                        if (debugOption.HasValue())
+                        {
+                            Console.Error.WriteLine(e.Message);
+                            Console.Error.WriteLine(e.StackTrace);
+                        }
                         return 1;
                     }
                     
