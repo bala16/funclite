@@ -19,6 +19,7 @@ namespace FuncLite
 
         protected override async Task UploadLanguageHost()
         {
+            _logger.LogInformation("UploadLanguageHost " + Name);
             await CreateKuduFolder(@"d:\home\SiteExtensions\FuncLite");
 
             await EnsureScmHttpClient();
@@ -65,6 +66,8 @@ namespace FuncLite
 
         protected override async Task RestartScmSite()
         {
+            _logger.LogInformation("RestartScmSite " + Name);
+
             // Just kill the scm site to restart it (faster than full site restart)
             using (var response = await Client.DeleteAsync($"{ScmBaseUrl}/api/processes/0"))
             {

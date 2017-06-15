@@ -208,6 +208,8 @@ namespace FuncLite
 
         async Task WarmUpFreeApps()
         {
+            Logger.LogInformation("Warming up all apps");
+
             // Keep all the free apps warm
             var appRefreshTasks = _allFreeApps[Language.Node].Select(app => ((WindowsApp) app).SendWarmUpRequests()).ToList();
             appRefreshTasks.AddRange(_allFreeApps[Language.Ruby].Select(app => ((LinuxApp) app).SendWarmUpRequests()));

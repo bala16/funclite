@@ -16,7 +16,7 @@ namespace FuncLite
         protected readonly HttpClient Client;
         private readonly MyConfig _config;
         protected HttpClient ScmClient;
-        readonly ILogger _logger;
+        protected readonly ILogger _logger;
 
         public Language Language { get; }
 
@@ -90,7 +90,7 @@ namespace FuncLite
         protected async Task CompleteCreation()
         {
             // Wait one second before hitting it to make sure the DNS propagates
-            await Task.Delay(2000);
+            await Task.Delay(5000);
 
             // Upload the lightweight host
             await UploadLanguageHost();
