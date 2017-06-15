@@ -4,6 +4,7 @@ using System.Linq;
 using System.Net.Http;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
+using System.Threading;
 
 namespace FuncLite
 {
@@ -96,6 +97,9 @@ namespace FuncLite
 
         protected async Task CompleteCreation()
         {
+            // Wait one second before hitting it to make sure the DNS propagates
+            await Task.Delay(1000);
+
             // Upload the lightweight host
             await UploadLanguageHost();
 
