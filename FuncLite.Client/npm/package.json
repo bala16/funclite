@@ -1,0 +1,18 @@
+﻿{
+  "name": "funclite",
+  "version": "1.0.0",
+  "description": "Azure Functions Lite Core Tools",
+  "scripts": {},
+  "author": "Microsoft",
+  "license": "MIT",
+  "preferGlobal": true,
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/davidebbo-test/funclite.git"
+  },
+  "bin": {
+    "funclite": "lib/main.js"
+  },
+  "os": [ "win32" ],
+  "dependencies": {}
+}
