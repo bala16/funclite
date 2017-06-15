@@ -39,13 +39,15 @@ namespace FuncLite.Controllers
         [HttpGet("{name}/versions")]
         public IActionResult GetVersions(string name)
         {
-            var func = _funcManager.GetFunction(name);
-            if (func == null)
+            try
             {
-                return new NotFoundResult();
+                var function = _funcManager.GetFunction(name, throwIfNotFound: true);
+                return Ok(function.GetVersions());
             }
-
-            return Ok(func.GetVersions());
+            catch (FileNotFoundException e)
+            {
+                return NotFound(e.Message);
+            }
         }
 
         // POST api/functions/foo
@@ -75,7 +77,14 @@ namespace FuncLite.Controllers
         [Route("{name}/run")]
         public async Task<dynamic> Run(string name, [FromBody]JObject requestBody)
         {
-            return await _funcManager.Run(name, null, requestBody);
+            try
+            {
+                return await _funcManager.Run(name, null, requestBody);
+            }
+            catch (FileNotFoundException e)
+            {
+                return NotFound(e.Message);
+            }
         }
 
         // POST api/functions/foo/versions/17/run
@@ -83,15 +92,46 @@ namespace FuncLite.Controllers
         [Route("{name}/versions/{version}/run")]
         public async Task<dynamic> RunVersion(string name, int? version, [FromBody]JObject requestBody)
         {
-            return await _funcManager.Run(name, version, requestBody);
+            try
+            {
+                return await _funcManager.Run(name, version, requestBody);
+            }
+            catch (FileNotFoundException e)
+            {
+                return NotFound(e.Message);
+            }
         }
 
         // DELETE api/functions/foo
         [HttpDelete("{name}")]
-        public IActionResult Delete(int name)
+        public async Task<IActionResult> Delete(string name)
         {
-            //TODO
-            return NoContent();
+            try
+            {
+                await _funcManager.DeleteFunction(name);
+            }
+            catch (FileNotFoundException e)
+            {
+                return NotFound(e.Message);
+            }
+
+            return Ok();
+        }
+
+        [HttpDelete("{name}/versions/{version}")]
+        public async Task<IActionResult> DeleteVersion(string name, int version)
+        {
+            try
+            {
+                var function = _funcManager.GetFunction(name, throwIfNotFound: true);
+                await function.DeleteVersion(version);
+            }
+            catch (FileNotFoundException e)
+            {
+                return NotFound(e.Message);
+            }
+
+            return Ok();
         }
     }
 }

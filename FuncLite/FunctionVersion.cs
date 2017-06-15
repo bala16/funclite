@@ -30,5 +30,14 @@ namespace FuncLite
             var json = await _app.SendRequest(new { functionBody = requestBody });
             return json.functionBody;
         }
+
+        public async Task Delete()
+        {
+            if (_app != null)
+            {
+                await _app.Delete();
+                _app = null;
+            }
+        }
     }
 }

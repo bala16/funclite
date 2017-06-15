@@ -55,14 +55,24 @@ namespace FuncLite
 
         public async Task<dynamic> Run(JObject requestBody, int? version)
         {
+            var funcVersion = GetFunctionVersion(version);
+            return await funcVersion.Run(requestBody);
+        }
+
+        FunctionVersion GetFunctionVersion(int? version = null)
+        {
             int versionToRun = version != null ? version.Value : GetLatestVersion();
             if (versionToRun <= 0)
             {
-                throw new Exception($"Function doesn't have any versions");
+                throw new FileNotFoundException($"Function doesn't have any versions");
             }
 
-            var funcVersion = _versions[versionToRun];
-            return await funcVersion.Run(requestBody);
+            if (!_versions.TryGetValue(versionToRun, out FunctionVersion funcVersion))
+            {
+                throw new FileNotFoundException($"Version {versionToRun} doesn't exist");
+            }
+
+            return funcVersion;
         }
 
         public IEnumerable<int> GetVersions()
@@ -78,6 +88,26 @@ namespace FuncLite
         int GetNewVersion()
         {
             return GetLatestVersion() + 1;
+        }
+
+        public async Task Delete()
+        {
+            foreach(int version in _versions.Keys.ToList())
+            {
+                await DeleteVersion(version);
+            }
+
+            Directory.Delete(_folder, recursive: true);
+        }
+
+        public async Task DeleteVersion(int version)
+        {
+            var funcVersion = GetFunctionVersion(version);
+            await funcVersion.Delete();
+            _versions.Remove(version);
+
+            string versionFolderPath = Path.Combine(_folder, version.ToString());
+            Directory.Delete(versionFolderPath, recursive: true);
         }
     }
 }

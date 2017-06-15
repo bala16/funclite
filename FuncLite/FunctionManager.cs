@@ -35,11 +35,7 @@ namespace FuncLite
 
         public async Task<dynamic> Run(string name, int? version, JObject requestBody)
         {
-            if (!_functions.TryGetValue(name, out Function function))
-            {
-                throw new FileNotFoundException($"Function {name} does not exist");
-            }
-
+            Function function = GetFunction(name, throwIfNotFound: true);
             return await function.Run(requestBody, version);
         }
 
@@ -52,10 +48,14 @@ namespace FuncLite
             }
         }
 
-        public Function GetFunction(string name)
+        public Function GetFunction(string name, bool throwIfNotFound = false)
         {
             if (!_functions.TryGetValue(name, out Function function))
             {
+                if (throwIfNotFound)
+                {
+                    throw new FileNotFoundException($"Function {name} does not exist");
+                }
                 return null;
             }
 
@@ -66,10 +66,17 @@ namespace FuncLite
         {
             if (!_functions.TryGetValue(name, out Function function))
             {
-                _functions[name] = new Function(_appManager, Path.Combine(_functionsFolder, name));
+                function = _functions[name] = new Function(_appManager, Path.Combine(_functionsFolder, name));
             }
 
             return function;
+        }
+
+        public async Task DeleteFunction(string name)
+        {
+            Function function = GetFunction(name, throwIfNotFound: true);
+            await function.Delete();
+            _functions.Remove(name);
         }
     }
 }

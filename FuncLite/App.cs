@@ -148,6 +148,12 @@ namespace FuncLite
             {
                 response.EnsureSuccessStatusCode();
             }
+
+            if (_scmClient != null)
+            {
+                _scmClient.Dispose();
+                _scmClient = null;
+            }
         }
 
         public async Task MarkAsUsed()
