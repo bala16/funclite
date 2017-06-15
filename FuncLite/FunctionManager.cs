@@ -24,23 +24,23 @@ namespace FuncLite
             LoadExistingFunctions();
         }
 
-        public IEnumerable<string> Functions => _functions.Keys;
+        public IEnumerable<string> FunctionNames => _functions.Keys;
 
         public async Task<Function> Create(string name, Stream zipContent)
         {
-            Function function = GetFunction(name);
+            Function function = EnsureFunction(name);
             await function.CreateNewVersion(zipContent);
             return function;
         }
 
-        public async Task<dynamic> Run(string name, JObject requestBody)
+        public async Task<dynamic> Run(string name, int? version, JObject requestBody)
         {
             if (!_functions.TryGetValue(name, out Function function))
             {
                 throw new FileNotFoundException($"Function {name} does not exist");
             }
 
-            return await function.Run(requestBody);
+            return await function.Run(requestBody, version);
         }
 
         void LoadExistingFunctions()
@@ -52,7 +52,17 @@ namespace FuncLite
             }
         }
 
-        Function GetFunction(string name)
+        public Function GetFunction(string name)
+        {
+            if (!_functions.TryGetValue(name, out Function function))
+            {
+                return null;
+            }
+
+            return function;
+        }
+
+        Function EnsureFunction(string name)
         {
             if (!_functions.TryGetValue(name, out Function function))
             {

@@ -24,7 +24,7 @@ namespace FuncLite.Controllers
         [HttpGet]
         public IEnumerable<string> Get()
         {
-            return _funcManager.Functions;
+            return _funcManager.FunctionNames;
         }
 
         // GET api/functions/foo
@@ -36,6 +36,17 @@ namespace FuncLite.Controllers
             return functionWireObject;
         }
 
+        [HttpGet("{name}/versions")]
+        public IActionResult GetVersions(string name)
+        {
+            var func = _funcManager.GetFunction(name);
+            if (func == null)
+            {
+                return new NotFoundResult();
+            }
+
+            return Ok(func.GetVersions());
+        }
 
         // POST api/functions/foo
         [HttpPost("{name}")]
@@ -64,12 +75,20 @@ namespace FuncLite.Controllers
         [Route("{name}/run")]
         public async Task<dynamic> Run(string name, [FromBody]JObject requestBody)
         {
-            return await _funcManager.Run(name, requestBody);
+            return await _funcManager.Run(name, null, requestBody);
+        }
+
+        // POST api/functions/foo/versions/17/run
+        [HttpPost]
+        [Route("{name}/versions/{version}/run")]
+        public async Task<dynamic> RunVersion(string name, int? version, [FromBody]JObject requestBody)
+        {
+            return await _funcManager.Run(name, version, requestBody);
         }
 
         // DELETE api/functions/foo
         [HttpDelete("{name}")]
-        public async Task<IActionResult> Delete(int name)
+        public IActionResult Delete(int name)
         {
             //TODO
             return NoContent();

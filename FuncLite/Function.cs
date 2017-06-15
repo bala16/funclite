@@ -53,16 +53,21 @@ namespace FuncLite
             _versions[newVersion] = new FunctionVersion(_appManager, packagePath);
         }
 
-        public async Task<dynamic> Run(JObject requestBody)
+        public async Task<dynamic> Run(JObject requestBody, int? version)
         {
-            int latestVersion = GetLatestVersion();
-            if (latestVersion <= 0)
+            int versionToRun = version != null ? version.Value : GetLatestVersion();
+            if (versionToRun <= 0)
             {
-                throw new Exception($"Function doesn'thave any versions");
+                throw new Exception($"Function doesn't have any versions");
             }
 
-            var funcVersion = _versions[latestVersion];
+            var funcVersion = _versions[versionToRun];
             return await funcVersion.Run(requestBody);
+        }
+
+        public IEnumerable<int> GetVersions()
+        {
+            return _versions.Keys.OrderBy(n => n);
         }
 
         int GetLatestVersion()

@@ -113,7 +113,6 @@ namespace FuncLite
             {
                 response.EnsureSuccessStatusCode();
             }
-
         }
 
         public async Task<dynamic> SendRequest(object payload)
