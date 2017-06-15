@@ -45,42 +45,10 @@ namespace FuncLite
             }
         }
 
-        public async Task<BaseApp> GetInUseState()
-        {
-            using (var response = await Client.PostAsync(
-                $"/subscriptions/{_config.Subscription}/resourceGroups/{_config.ResourceGroup}/providers/Microsoft.Web/sites/{AppName}/config/metadata/list?api-version=2016-03-01",
-                null
-            ))
-            {
-                response.EnsureSuccessStatusCode();
-
-                var json = await response.Content.ReadAsAsync<dynamic>();
-                InUse = (json.properties.IN_USE == "1");
-                return this;
-            }
-        }
-
         public async Task Delete()
         {
             using (var response = await Client.DeleteAsync(
                 $"/subscriptions/{_config.Subscription}/resourceGroups/{_config.ResourceGroup}/providers/Microsoft.Web/sites/{AppName}?api-version=2016-03-01"))
-            {
-                response.EnsureSuccessStatusCode();
-            }
-        }
-
-        public async Task MarkAsUsed()
-        {
-            // Mark it as used using the metadata collection, since that doesn't restart the site
-            using (var response = await Client.PutAsJsonAsync(
-                $"/subscriptions/{_config.Subscription}/resourceGroups/{_config.ResourceGroup}/providers/Microsoft.Web/sites/{AppName}/config/metadata?api-version=2016-03-01",
-                new
-                {
-                    properties = new
-                    {
-                        IN_USE = 1
-                    }
-                }))
             {
                 response.EnsureSuccessStatusCode();
             }

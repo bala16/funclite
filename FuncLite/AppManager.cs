@@ -1,8 +1,11 @@
 ﻿using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Net.Http;
 using System.Threading;
@@ -13,11 +16,13 @@ namespace FuncLite
 
     public class AppManager
     {
+        const string InUseFilePath = "AppsInUse.json";
+
         readonly HttpClient _client;
         readonly MyConfig _config;
+        static readonly object _inUseFileLock = new object();
 
         private readonly Dictionary<Language, Queue<BaseApp>> _allFreeApps = new Dictionary<Language, Queue<BaseApp>>();
-        private readonly Dictionary<Language, Queue<BaseApp>> _allAppsToMarkAsInUse = new Dictionary<Language, Queue<BaseApp>>();
 
         public AppManager(IOptions<MyConfig> config, ILogger<AppManager> logger)
         {
@@ -33,9 +38,6 @@ namespace FuncLite
 
             _allFreeApps.Add(Language.Node, new Queue<BaseApp>());
             _allFreeApps.Add(Language.Ruby, new Queue<BaseApp>());
-
-            _allAppsToMarkAsInUse.Add(Language.Node, new Queue<BaseApp>());
-            _allAppsToMarkAsInUse.Add(Language.Ruby, new Queue<BaseApp>());
 
             Init().Wait();
 
@@ -56,7 +58,7 @@ namespace FuncLite
 
             var readyApp = appQueue.Dequeue();
 
-            _allAppsToMarkAsInUse[language].Enqueue(readyApp);
+            MarkAppAsInUse(readyApp);
 
             return readyApp;
         }
@@ -88,56 +90,49 @@ namespace FuncLite
             {
                 response.EnsureSuccessStatusCode();
 
-                var json = await response.Content.ReadAsAsync<dynamic>();
+                var allApps = await response.Content.ReadAsAsync<dynamic>();
 
-                // Following code is quite ugly. Idea is to delete any site that was previously in use to only start with clean ones
-                var allInUseAppTasks = new Dictionary<Language, List<Task<BaseApp>>>();
-                allInUseAppTasks.Add(Language.Node, new List<Task<BaseApp>>());
-                allInUseAppTasks.Add(Language.Ruby, new List<Task<BaseApp>>());
+                // Delete any app we find that has been used before
+                var allDeleteTasks = new List<Task>();
 
-                foreach (var appProps in json.value)
+                JObject appsInUse = GetInUseAppNames();
+
+                foreach (var appProps in allApps.value)
                 {
+                    BaseApp app;
                     string appName = appProps.properties.name;
-                    BaseApp inUseApp;
                     if (appName.StartsWith("Linux"))
                     {
-                        inUseApp = new LinuxApp(_client, _config, Logger, appProps.properties);
-                        allInUseAppTasks[Language.Ruby].Add(inUseApp.GetInUseState());
+                        app = new LinuxApp(_client, _config, Logger, appProps.properties);
                     }
                     else
                     {
-                        inUseApp = new WindowsApp(_client, _config, Logger, appProps.properties);
-                        allInUseAppTasks[Language.Node].Add(inUseApp.GetInUseState());
+                        app = new WindowsApp(_client, _config, Logger, appProps.properties);
                     }
-                }
 
-                var allDeleteTasks = new List<Task>();
-                foreach (var app in await Task.WhenAll(allInUseAppTasks[Language.Ruby]))
-                {
-                    if (app.InUse)
+                    if (appsInUse[appName] != null)
                     {
                         allDeleteTasks.Add(app.Delete());
                     }
                     else
                     {
-                        _allFreeApps[app.Language].Enqueue(app);
-                    }
-                }
-
-                foreach (var app in await Task.WhenAll(allInUseAppTasks[Language.Node]))
-                {
-                    if (app.InUse)
-                    {
-                        allDeleteTasks.Add(app.Delete());
-                    }
-                    else
-                    {
-                        _allFreeApps[app.Language].Enqueue(app);
+                        if (app is LinuxApp)
+                        {
+                            _allFreeApps[Language.Ruby].Enqueue(app);
+                        }
+                        else
+                        {
+                            _allFreeApps[Language.Node].Enqueue(app);
+                        }
                     }
                 }
 
                 await Task.WhenAll(allDeleteTasks);
 
+                if (File.Exists(InUseFilePath))
+                {
+                    File.Delete(InUseFilePath);
+                }
             }
         }
 
@@ -174,25 +169,31 @@ namespace FuncLite
             }
         }
 
+        JObject GetInUseAppNames()
+        {
+            if (!File.Exists(InUseFilePath))
+            {
+                return new JObject();
+            }
+
+            return JObject.Parse(File.ReadAllText(InUseFilePath));
+        }
+
+        void MarkAppAsInUse(BaseApp app)
+        {
+            lock (_inUseFileLock)
+            {
+                JObject appsInUse = GetInUseAppNames();
+                appsInUse[app.Name] = true;
+
+                File.WriteAllText(InUseFilePath, JsonConvert.SerializeObject(appsInUse));
+            }
+        }
+
         async Task BackgrounMaintenance()
         {
             try
             {
-                var tasksmarkInUseTasks = new List<Task>();
-
-                while (_allAppsToMarkAsInUse[Language.Node].Count > 0)
-                {
-                    tasksmarkInUseTasks.Add(_allAppsToMarkAsInUse[Language.Node].Dequeue().MarkAsUsed());
-                }
-
-
-                while (_allAppsToMarkAsInUse[Language.Ruby].Count > 0)
-                {
-                    tasksmarkInUseTasks.Add(_allAppsToMarkAsInUse[Language.Ruby].Dequeue().MarkAsUsed());
-                }
-
-                await Task.WhenAll(tasksmarkInUseTasks);
-
                 // Create new apps if needed
                 await CreateNewAppsIfNeeded();
 
