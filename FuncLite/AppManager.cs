@@ -163,8 +163,15 @@ namespace FuncLite
 
         async Task CreateNewAppsIfNeeded()
         {
-            await CreateNewAppsIfNeededFor(Language.Node);
-            await CreateNewAppsIfNeededFor(Language.Ruby);
+            try
+            {
+                await CreateNewAppsIfNeededFor(Language.Node);
+                await CreateNewAppsIfNeededFor(Language.Ruby);
+            }
+            catch (Exception e)
+            {
+                Logger.LogError("Failed to create new apps: " + e.ToString());
+            }
         }
 
         async Task BackgrounMaintenance()
