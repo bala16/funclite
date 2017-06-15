@@ -11,7 +11,7 @@ namespace FuncLite
     {
         readonly AppManager _appManager;
         readonly string _zipPackagePath;
-        App _app;
+        BaseApp _app;
 
         public FunctionVersion(AppManager appManager, string zipPackagePath)
         {
@@ -19,12 +19,23 @@ namespace FuncLite
             _zipPackagePath = zipPackagePath;
         }
 
-        public async Task<dynamic> Run(JObject requestBody)
+        public async Task<dynamic> Run(Language language, JObject requestBody)
         {
             if (_app == null)
             {
-                _app = _appManager.GetApp();
-                await _app.UploadUserCode(_zipPackagePath);
+                _app = _appManager.GetAppFor(language);
+
+                if (language == Language.Ruby)
+                {
+                    var linuxApp = _app as LinuxApp;
+                    await linuxApp.UploadUserCode(_zipPackagePath);
+                }
+                else
+                {
+                    var windowsApp = _app as WindowsApp;
+                    await windowsApp.UploadUserCode(_zipPackagePath);
+                }
+
             }
 
             var json = await _app.SendRequest(new { functionBody = requestBody });

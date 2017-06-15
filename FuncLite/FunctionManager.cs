@@ -5,6 +5,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Text;
 using System.Threading.Tasks;
 
 namespace FuncLite
@@ -13,7 +14,7 @@ namespace FuncLite
     {
         readonly AppManager _appManager;
         readonly string _functionsFolder;
-        Dictionary<string, Function> _functions = new Dictionary<string, Function>(StringComparer.OrdinalIgnoreCase);
+        readonly Dictionary<Language, Dictionary<string, Function>> _functions;
 
         public FunctionManager(IOptions<MyConfig> config, AppManager appManager, ILogger<FunctionManager> logger)
         {
@@ -21,36 +22,68 @@ namespace FuncLite
             _functionsFolder = Path.Combine(config.Value.DataFolder, "Functions");
             Directory.CreateDirectory(_functionsFolder);
 
+            _functions = new Dictionary<Language, Dictionary<string, Function>>();
+            foreach (var language in Enum.GetValues(typeof(Language)).Cast<Language>())
+            {
+                _functions.Add(language, new Dictionary<string, Function>(StringComparer.OrdinalIgnoreCase));
+            }
+
             LoadExistingFunctions();
         }
 
-        public IEnumerable<string> FunctionNames => _functions.Keys;
-
-        public async Task<Function> Create(string name, Stream zipContent)
+        public IEnumerable<string> Functions
         {
-            Function function = EnsureFunction(name);
+            get
+            {
+                var functions = new List<string>();
+                foreach (KeyValuePair<Language, Dictionary<string, Function>> keyValuePair in _functions)
+                {
+                    foreach (Function value in _functions[keyValuePair.Key].Values)
+                    {
+                        foreach (var function in value.GetAllFunctions())
+                        {
+                            functions.Add($"{keyValuePair.Key}/{function}");
+                        }
+                    }
+                }
+                return functions;
+            }
+        }
+
+        public async Task<Function> Create(Language language, string name, Stream zipContent)
+        {
+            Function function = EnsureFunction(language, name);
             await function.CreateNewVersion(zipContent);
             return function;
         }
 
         public async Task<dynamic> Run(string name, int? version, JObject requestBody)
         {
-            Function function = GetFunction(name, throwIfNotFound: true);
+            var function = GetFunction(Language.Ruby, name, false) ?? GetFunction(Language.Node, name, true);
             return await function.Run(requestBody, version);
         }
 
         void LoadExistingFunctions()
         {
-            foreach (string functionFolderPath in Directory.EnumerateDirectories(_functionsFolder))
+            foreach (string languageFolderPath in Directory.EnumerateDirectories(_functionsFolder))
             {
-                string functionName = Path.GetFileName(functionFolderPath);
-                _functions[functionName] = new Function(_appManager, functionFolderPath);
+                string languageName = Path.GetFileName(languageFolderPath);
+                if (Enum.TryParse(languageName, out Language language))
+                {
+                    foreach (var functionFolderPath in Directory.EnumerateDirectories(languageFolderPath))
+                    {
+                        string functionName = Path.GetFileName(functionFolderPath);
+                        _functions[language][functionName] = new Function(_appManager, language, functionFolderPath);
+                    }
+                }
             }
         }
 
-        public Function GetFunction(string name, bool throwIfNotFound = false)
+        public Function GetFunction(Language language, string name, bool throwIfNotFound = false)
         {
-            if (!_functions.TryGetValue(name, out Function function))
+            var functions = _functions[language];
+
+            if (!functions.TryGetValue(name, out Function function))
             {
                 if (throwIfNotFound)
                 {
@@ -62,11 +95,14 @@ namespace FuncLite
             return function;
         }
 
-        Function EnsureFunction(string name)
+
+        Function EnsureFunction(Language language, string name)
         {
-            if (!_functions.TryGetValue(name, out Function function))
+            var functions = _functions[language];
+
+            if (!functions.TryGetValue(name, out Function function))
             {
-                function = _functions[name] = new Function(_appManager, Path.Combine(_functionsFolder, name));
+                function = functions[name] = new Function(_appManager, language, Path.Combine(new[] { _functionsFolder, language.ToString(), name }));
             }
 
             return function;
@@ -74,9 +110,10 @@ namespace FuncLite
 
         public async Task DeleteFunction(string name)
         {
-            Function function = GetFunction(name, throwIfNotFound: true);
+            Function function = GetFunction(Language.Node, name, throwIfNotFound: false) ?? GetFunction(Language.Ruby, name, throwIfNotFound: true);
+
             await function.Delete();
-            _functions.Remove(name);
+            _functions[function.Language].Remove(name);
         }
     }
 }

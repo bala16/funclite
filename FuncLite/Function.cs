@@ -3,6 +3,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Text;
 using System.Threading.Tasks;
 
 namespace FuncLite
@@ -11,13 +12,15 @@ namespace FuncLite
     {
         const string ZipFileName = "package.zip";
         readonly AppManager _appManager;
-        Dictionary<int, FunctionVersion> _versions = new Dictionary<int, FunctionVersion>();
+        readonly Dictionary<int, FunctionVersion> _versions = new Dictionary<int, FunctionVersion>();
         readonly string _folder;
+        public Language Language { get; }
 
-        public Function(AppManager appManager, string folder)
+        public Function(AppManager appManager, Language language, string folder)
         {
             _appManager = appManager;
             _folder = folder;
+            Language = language;
             Directory.CreateDirectory(_folder);
 
             LoadExistingVersions();
@@ -56,12 +59,12 @@ namespace FuncLite
         public async Task<dynamic> Run(JObject requestBody, int? version)
         {
             var funcVersion = GetFunctionVersion(version);
-            return await funcVersion.Run(requestBody);
+            return await funcVersion.Run(Language, requestBody);
         }
 
         FunctionVersion GetFunctionVersion(int? version = null)
         {
-            int versionToRun = version != null ? version.Value : GetLatestVersion();
+            int versionToRun = version ?? GetLatestVersion();
             if (versionToRun <= 0)
             {
                 throw new FileNotFoundException($"Function doesn't have any versions");
@@ -88,6 +91,11 @@ namespace FuncLite
         int GetNewVersion()
         {
             return GetLatestVersion() + 1;
+        }
+
+        public IEnumerable<string> GetAllFunctions()
+        {
+            return _versions.Keys.Select(functionVersion => $"{Path.GetFileName(Path.GetFullPath(_folder))}/Version-{functionVersion}").ToList();
         }
 
         public async Task Delete()

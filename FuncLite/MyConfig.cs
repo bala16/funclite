@@ -15,5 +15,10 @@ namespace FuncLite
         public string ClientSecret { get; set; }
         public int FreeAppQueueSize { get; set; }
         public string DataFolder { get; set; }
+        public string ServerFarmId { get; set; }
+        public string DockerServerURL { get; set; }
+        public string DockerImageName { get; set; }
+        public string DockerRegistryUserName { get; set; }
+        public string DockerRegistryPassword { get; set; }
     }
 }

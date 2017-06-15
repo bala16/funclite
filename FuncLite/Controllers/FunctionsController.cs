@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.Extensions.Configuration;
 using Microsoft.AspNetCore.Http;
 using System.IO;
 using Newtonsoft.Json.Linq;
@@ -24,7 +23,7 @@ namespace FuncLite.Controllers
         [HttpGet]
         public IEnumerable<string> Get()
         {
-            return _funcManager.FunctionNames;
+            return _funcManager.Functions;
         }
 
         // GET api/functions/foo
@@ -41,8 +40,8 @@ namespace FuncLite.Controllers
         {
             try
             {
-                var function = _funcManager.GetFunction(name, throwIfNotFound: true);
-                return Ok(function.GetVersions());
+                var func = _funcManager.GetFunction(Language.Node, name, throwIfNotFound: false) ?? _funcManager.GetFunction(Language.Ruby, name, throwIfNotFound: true);
+                return Ok(func.GetVersions());
             }
             catch (FileNotFoundException e)
             {
@@ -54,20 +53,20 @@ namespace FuncLite.Controllers
         [HttpPost("{name}")]
         public async Task<IActionResult> Post([FromRoute] string name, IFormCollection formData)
         {
-            string language = formData.Where(kvp => kvp.Key.Equals("language")).FirstOrDefault().Value.FirstOrDefault();
-            IFormFile file = formData.Files.Where(f => f.FileName.EndsWith(".zip")).FirstOrDefault();
+            var language = formData.FirstOrDefault(kvp => kvp.Key.Equals("language")).Value.FirstOrDefault();
+            var file = formData.Files.FirstOrDefault(f => f.FileName.EndsWith(".zip"));
 
-            await _funcManager.Create(name, file.OpenReadStream());
+            if (language == null || file == null)
+            {
+                return BadRequest();
+            }
 
-            return Ok(new { result = "function created" });
-        }
+            if (!Enum.TryParse(language, true, out Language langType))
+            {
+                return new UnsupportedMediaTypeResult();
+            }
 
-        //TODO remove?
-        // PUT api/functions/foo
-        [HttpPut("{name}")]
-        public async Task<IActionResult> Put(string name)
-        {
-            await _funcManager.Create(name, Request.Body);
+            await _funcManager.Create(langType, name, file.OpenReadStream());
 
             return Ok(new { result = "function created" });
         }
@@ -123,7 +122,7 @@ namespace FuncLite.Controllers
         {
             try
             {
-                var function = _funcManager.GetFunction(name, throwIfNotFound: true);
+                var function = _funcManager.GetFunction(Language.Node, name, throwIfNotFound: false) ?? _funcManager.GetFunction(Language.Ruby, name, throwIfNotFound: true);
                 await function.DeleteVersion(version);
             }
             catch (FileNotFoundException e)
