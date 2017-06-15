@@ -14,15 +14,15 @@
     ],
     "paths": {
         "/api/functions/{functionName}/run": {
-            "parameters": [
-                {
-                    "name": "functionName",
-                    "in": "path",
-                    "description": "The name of the function",
-                    "required": true,
-                    "type": "string"
-                }
-            ]
+          "parameters": [
+            {
+              "name": "functionName",
+              "in": "path",
+              "description": "The name of the function",
+              "required": true,
+              "type": "string"
+            }
+          ]
         },
         "/api/functions/{functionName}/{versionId}/run": {
             "parameters": [
@@ -135,13 +135,13 @@
                 "summary": "Delete a function",
                 "description": "",
                 "responses": {
-                    "204": {
+                    "200": {
                         "description": "successful operation"
                     }
                 }
             }
         },
-        "/admin/functions/{functionName}/versions": {
+        "/api/functions/{functionName}/versions": {
             "parameters": [
                 {
                     "name": "functionName",
@@ -165,14 +165,14 @@
                         "schema": {
                             "type": "array",
                             "items": {
-                                "$ref": "#/definitions/VersionInfo"
+                                "type": "string"
                             }
                         }
                     }
                 }
             }
-        },
-        "/admin/functions/{functionName}/versions/{versionId}": {
+        }, 
+        "/api/functions/{functionName}/versions/{versionId}": {
             "parameters": [
                 {
                     "name": "functionName",
@@ -210,7 +210,7 @@
                 "summary": "Delete a version",
                 "description": "",
                 "responses": {
-                    "204": {
+                    "200": {
                         "description": "successful operation"
                     }
                 }

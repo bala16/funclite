@@ -6,6 +6,9 @@ using System.Collections.Generic;
 using System.IO;
 using System.Threading.Tasks;
 using System.IO.Compression;
+using System.Net.Http;
+using Newtonsoft.Json.Linq;
+using Newtonsoft.Json;
 
 namespace FuncLite.Client
 {
@@ -21,7 +24,7 @@ namespace FuncLite.Client
 
             cli.RegisterList();
 
-            //cli.RegisterRun();
+            cli.RegisterRun();
 
             cli.RegisterPublish();
             cli.RegisterDelete();
@@ -85,7 +88,10 @@ namespace FuncLite.Client
                         Console.WriteLine(command.GetHelpText());
                         return 1;
                     }
-                    Console.WriteLine("Executing " + command.Name + "...");
+                    if (debugOption.HasValue())
+                    {
+                        Console.WriteLine("Running command: " + command.Name + "...");
+                    }
 
                     try
                     {
@@ -183,14 +189,14 @@ namespace FuncLite.Client
             public void RegisterGetVersions()
             {
                 CommandArgument name = null;
-                functionCommand.Command("*versions", (command) => {
+                functionCommand.Command("versions", (command) => {
                     name = command.Argument("functionName", "The name of the target function");
-                    NormalizeCommand(command, "UNIMPLEMENTED - Lists the versions for a function", async () =>
+                    NormalizeCommand(command, "Lists the versions for a function", async () =>
                     {
-                        IList<VersionInfo> versions = await client.ListVersionsForFunctionAsync(name.Value);
-                        foreach (VersionInfo v in versions)
+                        IList<string> versions = await client.ListVersionsForFunctionAsync(name.Value);
+                        foreach (string v in versions)
                         {
-                            Console.WriteLine(v.ToString());
+                            Console.WriteLine(v);
                         }
                         return 0;
                     });
@@ -273,7 +279,7 @@ namespace FuncLite.Client
                     NormalizeCommand(command, "UNIMPLEMENTED - Gets the logs for a function", async () =>
                     {
                         if (invocation.HasValue())
-                        {
+                        { 
                             string logs = await client.GetLogForInvocationAsync(name.Value, invocation.Value());
                             Console.WriteLine(logs);
                         }
@@ -288,36 +294,45 @@ namespace FuncLite.Client
             }
 
 
-            //TODO
-            //public void RegisterRun()
-            //{
-            //    CommandArgument name = null;
-            //    CommandOption version = null;
-            //    functionCommand.Command("run", (command) => {
-            //        name = command.Argument("functionName", "The name of the target function");
-            //        version = command.Option("-v | --version", "A specific version to run", CommandOptionType.SingleValue);
-            //        command.HelpOption("--help");
-            //        command.OnExecute(async () =>
-            //        {
+            
+            public void RegisterRun()
+            {
+                CommandArgument name = null; git 
+                CommandOption version = null;
+                CommandOption fileName = null;
+                functionCommand.Command("run", (command) =>
+                {
+                    name = command.Argument("functionName", "The name of the target function");
+                    version = command.Option("-v | --version", "A specific version to run", CommandOptionType.SingleValue);
+                    fileName = command.Option("-f | --file", "The name of a JSON file to be used as the request body", CommandOptionType.SingleValue);
+                    NormalizeCommand(command, "Runs a function in the cloud", async () =>
+                    {
+                        HttpClient customClient = new HttpClient();
 
-            //            if (command.Arguments.Exists(arg => arg.Value == null))
-            //            {
-            //                Console.WriteLine(command.GetHelpText());
-            //                return 1;
-            //            }
-            //            LogExecution(command);
-            //            //if (version.HasValue())
-            //            //{
+                        string baseURL = client.BaseUri.AbsoluteUri + "api/functions/" + name.Value;
+                        string versionURL = version.HasValue() ? "/versions/"+ version.Value() : "";
+                        string runURL = baseURL + versionURL + "/run";
+                        Console.WriteLine(runURL);
 
-            //            //}
-            //            //else
-            //            //{
+                        HttpMethod runMethod = HttpMethod.Post;
 
-            //            //}
-            //            return 0;
-            //        });
-            //    });
-            //}
+                        JObject body = new JObject();
+                        if (fileName.HasValue())
+                        {
+                            body = (JObject)JsonConvert.DeserializeObject(File.ReadAllText(fileName.Value()));
+                        }
+
+                        HttpRequestMessage request = new HttpRequestMessage(runMethod, runURL);
+                        request.Content = new StringContent(body.ToString(), System.Text.Encoding.UTF8, "application/json");
+                        Console.WriteLine(request.ToString());
+
+                        HttpResponseMessage response = await customClient.SendAsync(request);
+                        Console.WriteLine(response.ToString());
+          
+                        return 0;
+                    });
+                });
+            }
 
         }
 
