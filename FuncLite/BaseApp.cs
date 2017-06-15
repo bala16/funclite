@@ -90,7 +90,7 @@ namespace FuncLite
         protected async Task CompleteCreation()
         {
             // Wait one second before hitting it to make sure the DNS propagates
-            await Task.Delay(1000);
+            await Task.Delay(2000);
 
             // Upload the lightweight host
             await UploadLanguageHost();
