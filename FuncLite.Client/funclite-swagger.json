@@ -216,7 +216,7 @@
                 }
             }
         },
-        "/admin/functions/{functionName}/logs": {
+        "/api/functions/{functionName}/logs": {
             "parameters": [
                 {
                     "name": "functionName",
@@ -244,7 +244,7 @@
               }
             }
         },
-        "/admin/functions/{functionName}/logs/{invocationId}": {
+        "/api/functions/{functionName}/logs/{invocationId}": {
             "parameters": [
                 {
                     "name": "functionName",

@@ -297,7 +297,7 @@ namespace FuncLite.Client
             
             public void RegisterRun()
             {
-                CommandArgument name = null; git 
+                CommandArgument name = null; 
                 CommandOption version = null;
                 CommandOption fileName = null;
                 functionCommand.Command("run", (command) =>
@@ -325,10 +325,13 @@ namespace FuncLite.Client
                         HttpRequestMessage request = new HttpRequestMessage(runMethod, runURL);
                         request.Content = new StringContent(body.ToString(), System.Text.Encoding.UTF8, "application/json");
                         Console.WriteLine(request.ToString());
+                        Console.WriteLine(await request.Content.ReadAsStringAsync());
+                        Console.WriteLine();
 
                         HttpResponseMessage response = await customClient.SendAsync(request);
                         Console.WriteLine(response.ToString());
-          
+                        Console.WriteLine(await response.Content.ReadAsStringAsync());
+
                         return 0;
                     });
                 });
