@@ -193,7 +193,7 @@ namespace FuncLite
 
         async Task BackgroundMaintenance()
         {
-            Logger.LogInformation("BackgroundMaintenance");
+            Logger.LogInformation("BackgroundMaintenance starts");
 
             try
             {
@@ -207,6 +207,8 @@ namespace FuncLite
             {
                 // Ignore background task exceptions
             }
+
+            Logger.LogInformation("BackgroundMaintenance complete");
         }
 
         async Task WarmUpFreeApps()
