@@ -66,6 +66,12 @@ namespace FuncLite
 
         public async Task SendWarmUpRequests()
         {
+            await EnsureScmHttpClient();
+            using (var response = await ScmClient.GetAsync($"{ScmBaseUrl}"))
+            {
+                response.EnsureSuccessStatusCode();
+            }
+
             using (var response = await Client.GetAsync($"{SiteUrl}"))
             {
                 response.EnsureSuccessStatusCode();
