@@ -146,7 +146,7 @@ namespace FuncLite
             for (int i = 0; i < neededApps; i++)
             {
                 newAppTasks.Add(language == Language.Ruby
-                    ? LinuxApp.CreateApp(_client, _config, Logger, "Linuxfunclite-" + Environment.TickCount + "-" + Guid.NewGuid())
+                    ? LinuxApp.CreateApp(_client, _config, Logger, "Linuxfunclite-" + Guid.NewGuid())
                     : WindowsApp.CreateApp(_client, _config, Logger, "funclite-" + Environment.TickCount + "-" + Guid.NewGuid()));
             }
 
