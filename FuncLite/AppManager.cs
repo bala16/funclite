@@ -137,9 +137,9 @@ namespace FuncLite
             }
         }
 
-        async Task CreateNewAppsIfNeededFor(Language language)
+        async Task CreateNewAppsIfNeededFor(Language language, int freeAppQueueSize)
         {
-            var neededApps = _config.FreeAppQueueSize - _allFreeApps[language].Count;
+            var neededApps = freeAppQueueSize - _allFreeApps[language].Count;
 
             var newAppTasks = new List<Task<BaseApp>>();
 
@@ -161,8 +161,8 @@ namespace FuncLite
         {
             try
             {
-                await CreateNewAppsIfNeededFor(Language.Node);
-                await CreateNewAppsIfNeededFor(Language.Ruby);
+                await CreateNewAppsIfNeededFor(Language.Node, _config.FreeAppQueueSize);
+                await CreateNewAppsIfNeededFor(Language.Ruby, _config.LinuxFreeAppQueueSize);
             }
             catch (Exception e)
             {
