@@ -5,6 +5,7 @@ using System.Text;
 using System.Threading.Tasks;
 using FuncLite;
 using Microsoft.Extensions.Logging;
+using FuncLite.Helpers;
 
 namespace FuncLite
 {
@@ -31,39 +32,42 @@ namespace FuncLite
 
         public static async Task<BaseApp> CreateApp(HttpClient client, MyConfig config, ILogger<AppManager> logger, string appName)
         {
-            using (var response = await client.PutAsJsonAsync(
-                $"/subscriptions/{config.Subscription}/resourceGroups/{config.ResourceGroup}/providers/Microsoft.Web/sites/{appName}?api-version=2016-03-01",
-                new
-                {
-                    location = config.Region,
-                    kind = "functionapp",
-                    properties = new
+            return await OperationManager.AttemptAsync(async () =>
+            {
+                using (var response = await client.PutAsJsonAsync(
+                    $"/subscriptions/{config.Subscription}/resourceGroups/{config.ResourceGroup}/providers/Microsoft.Web/sites/{appName}?api-version=2016-03-01",
+                    new
                     {
-                        siteConfig = new
+                        location = config.Region,
+                        kind = "functionapp",
+                        properties = new
                         {
-                            appSettings = new[]
+                            siteConfig = new
                             {
-                                new
+                                appSettings = new[]
                                 {
-                                    name = "FUNCFILE",
-                                    value = "D:/local/funclite/index.js"
+                                    new
+                                    {
+                                        name = "FUNCFILE",
+                                        value = "D:/local/funclite/index.js"
+                                    }
                                 }
                             }
                         }
-                    }
-                }))
-            {
-                response.EnsureSuccessStatusCode();
+                    }))
+                {
+                    response.EnsureSuccessStatusCode();
 
-                logger.LogInformation($"App {appName} was created successfully");
+                    logger.LogInformation($"App {appName} was created successfully");
 
-                var json = await response.Content.ReadAsAsync<dynamic>();
-                var app = new WindowsApp(client, config, logger, json.properties);
+                    var json = await response.Content.ReadAsAsync<dynamic>();
+                    var app = new WindowsApp(client, config, logger, json.properties);
 
-                await app.CompleteCreation();
+                    await app.CompleteCreation();
 
-                return app;
-            }
+                    return app;
+                }
+            }, 5, 2000);
         }
 
         protected override async Task RestartScmSite()

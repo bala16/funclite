@@ -6,6 +6,7 @@ using System.Net.Http.Headers;
 using System.Text;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
+using FuncLite.Helpers;
 
 namespace FuncLite
 {
@@ -71,11 +72,14 @@ namespace FuncLite
 
         public async Task Delete()
         {
-            using (var response = await Client.DeleteAsync(
-                $"/subscriptions/{_config.Subscription}/resourceGroups/{_config.ResourceGroup}/providers/Microsoft.Web/sites/{AppName}?api-version=2016-03-01"))
+            await OperationManager.AttemptAsync(async () =>
             {
-                response.EnsureSuccessStatusCode();
-            }
+                using (var response = await Client.DeleteAsync(
+                    $"/subscriptions/{_config.Subscription}/resourceGroups/{_config.ResourceGroup}/providers/Microsoft.Web/sites/{AppName}?api-version=2016-03-01"))
+                {
+                    response.EnsureSuccessStatusCode();
+                }
+            }, 5, 2000);
         }
 
         protected abstract Task UploadLanguageHost();
