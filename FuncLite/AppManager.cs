@@ -43,7 +43,7 @@ namespace FuncLite
 
             CreateNewAppsIfNeeded().Wait();
 
-            new Timer(_ => BackgrounMaintenance().Wait(), null, 0, 60000);
+            new Timer(_ => BackgroundMaintenance().Wait(), null, 0, 60000);
         }
 
         public ILogger<AppManager> Logger { get; private set; }
@@ -190,8 +190,10 @@ namespace FuncLite
             }
         }
 
-        async Task BackgrounMaintenance()
+        async Task BackgroundMaintenance()
         {
+            Logger.LogInformation("BackgroundMaintenance");
+
             try
             {
                 // Create new apps if needed
@@ -208,7 +210,7 @@ namespace FuncLite
 
         async Task WarmUpFreeApps()
         {
-            Logger.LogInformation("Warming up all apps");
+            Logger.LogInformation("WarmUpFreeApps");
 
             // Keep all the free apps warm
             var appRefreshTasks = _allFreeApps[Language.Node].Select(app => ((WindowsApp) app).SendWarmUpRequests()).ToList();

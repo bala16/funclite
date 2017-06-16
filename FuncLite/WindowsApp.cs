@@ -55,6 +55,8 @@ namespace FuncLite
             {
                 response.EnsureSuccessStatusCode();
 
+                logger.LogInformation($"App {appName} was created successfully");
+
                 var json = await response.Content.ReadAsAsync<dynamic>();
                 var app = new WindowsApp(client, config, logger, json.properties);
 

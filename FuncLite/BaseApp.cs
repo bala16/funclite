@@ -89,6 +89,8 @@ namespace FuncLite
 
         protected async Task CompleteCreation()
         {
+            _logger.LogInformation($"CompleteCreation for {AppName}");
+
             // Wait one second before hitting it to make sure the DNS propagates
             await Task.Delay(5000);
 
