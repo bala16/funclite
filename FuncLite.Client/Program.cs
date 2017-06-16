@@ -31,7 +31,7 @@ namespace FuncLite.Client
 
             cli.RegisterGetVersions();
 
-            cli.RegisterGetLogs();
+           // cli.RegisterGetLogs();
 
 
              cli.Parse(args);
@@ -158,7 +158,7 @@ namespace FuncLite.Client
                         }
                         if (hasNode)
                         {
-                            language = "javascript";
+                            language = "node";
                         }
                         else if (hasRuby)
                         {
