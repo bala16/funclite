@@ -43,6 +43,7 @@ namespace FuncLite
 
             CreateNewAppsIfNeeded().Wait();
 
+            Logger.LogInformation("Setting up background timer");
             new Timer(_ => BackgroundMaintenance().Wait(), null, 0, 60000);
         }
 

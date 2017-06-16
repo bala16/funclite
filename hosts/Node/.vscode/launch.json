@@ -11,7 +11,8 @@
             "program": "${file}",
             "env": {
                 "funcFile": "../test/index.js"
-            }
+            },
+            "cwd": "${workspaceRoot}/src"
         },
         {
             "type": "node",

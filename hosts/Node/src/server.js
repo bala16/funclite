@@ -1,5 +1,6 @@
 const http = require("http");
 const url = require('url');
+const fs = require('fs');
 
 var userFunc;
 
@@ -24,11 +25,23 @@ http.createServer(function (request, response) {
 
         if (typeof userFunc == 'undefined') {
             console.log('Loading user function and injecting the environment');
+
+            var folder = require('path').dirname(process.env.funcFile);
+            var settingsFile = folder + "/settings.json";
+
+            try {
+                var settings = JSON.parse(fs.readFileSync(settingsFile, 'utf8'));
+
+                for (var varName in settings) {
+                    process.env[varName] = settings[varName];
+                }
+            }
+            catch (e) {
+                // It's ok if there is no settings file
+            }
+
             userFunc = require(process.env.funcFile);
 
-            for (var varName in jsonBody.environment) {
-                process.env[varName] = jsonBody.environment[varName];
-            }
         }
 
         var logLines = [];
