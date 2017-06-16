@@ -88,7 +88,7 @@ namespace FuncLite
         protected internal override async Task<dynamic> SendRequest(object payload)
         {
             await EnsureScmHttpClient();
-            using (var response = await ScmClient.PostAsJsonAsync($"{ScmBaseUrl}", payload))
+            using (var response = await ScmClient.PostAsJsonAsync($"{SiteUrl}", payload))
             {
                 response.EnsureSuccessStatusCode();
 
