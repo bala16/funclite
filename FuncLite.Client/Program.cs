@@ -263,9 +263,10 @@ namespace FuncLite.Client
 
             private bool ConfirmDeletion(string functionName)
             {
-                Console.WriteLine("To confirm deletion, please enter the function name");
-                string confirmation = Console.ReadLine();
-                return functionName.Equals(confirmation);
+                //Console.WriteLine("To confirm deletion, please enter the function name");
+                //string confirmation = Console.ReadLine();
+                //return functionName.Equals(confirmation);
+                return true;
             }
 
 
