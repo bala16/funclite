@@ -22,7 +22,8 @@ namespace FuncLite
         readonly MyConfig _config;
         static readonly object _inUseFileLock = new object();
 
-        private readonly Dictionary<Language, Queue<BaseApp>> _allFreeApps = new Dictionary<Language, Queue<BaseApp>>();
+        readonly Dictionary<Language, Queue<BaseApp>> _allFreeApps = new Dictionary<Language, Queue<BaseApp>>();
+        readonly Timer _timer;
 
         public AppManager(IOptions<MyConfig> config, ILogger<AppManager> logger)
         {
@@ -44,7 +45,7 @@ namespace FuncLite
             CreateNewAppsIfNeeded().Wait();
 
             Logger.LogInformation("Setting up background timer");
-            new Timer(_ => BackgroundMaintenance().Wait(), null, 0, 60000);
+            _timer = new Timer(_ => BackgroundMaintenance().Wait(), null, 0, 60000);
         }
 
         public ILogger<AppManager> Logger { get; private set; }
