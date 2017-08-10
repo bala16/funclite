@@ -27,10 +27,9 @@ namespace FuncLite.Controllers
         [HttpPost("{name}")]
         public async Task<IActionResult> CreateApp([FromRoute] string name, IFormCollection formData)
         {
-            var imageUrl = formData.FirstOrDefault(kvp => kvp.Key.Equals("image")).Value.FirstOrDefault();
             var composeFile = formData.Files.FirstOrDefault(f => f.FileName.EndsWith(".yml"));
 
-            if (imageUrl == null || composeFile == null)
+            if (composeFile == null)
             {
                 return BadRequest();
             }
@@ -38,7 +37,7 @@ namespace FuncLite.Controllers
             var streamContent = new StreamContent(composeFile.OpenReadStream());
             var composeFileContent = await streamContent.ReadAsStringAsync();
             var composeApplication = new ComposeApplication(name, composeFileContent);
-            await _clusterManager.CreateApplication(imageUrl, composeApplication);
+            await _clusterManager.CreateApplication(composeApplication);
 
             return Ok(new { result = $"Application {name} created" });
         }

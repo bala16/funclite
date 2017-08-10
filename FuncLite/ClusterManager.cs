@@ -27,7 +27,7 @@ namespace FuncLite
             _client.BaseAddress = new Uri(string.Format(ClusterEndpointTemplate, _endPoint, _portNumber));
         }
 
-        public async Task CreateApplication(string imageUrl, ComposeApplication composeApplication)
+        public async Task CreateApplication(ComposeApplication composeApplication)
         {
             using (var response = await _client.PutAsJsonAsync(
                 $"/ComposeDeployments/$/Create?api-version=4.0-preview&timeout=60",
