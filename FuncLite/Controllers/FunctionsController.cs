@@ -20,27 +20,7 @@ namespace FuncLite.Controllers
         [HttpGet]
         public string Get()
         {
-            return "Controller started";
-        }
-
-        // POST api/functions/foo
-        [HttpPost("{name}")]
-        public async Task<IActionResult> PostFunction([FromRoute] string name, IFormCollection formData)
-        {
-            var imageUrl = formData.FirstOrDefault(kvp => kvp.Key.Equals("image")).Value.FirstOrDefault();
-            var composeFile = formData.Files.FirstOrDefault(f => f.FileName.EndsWith(".yml"));
-
-            if (imageUrl == null || composeFile == null)
-            {
-                return BadRequest();
-            }
-
-            var streamContent = new StreamContent(composeFile.OpenReadStream());
-            var composeFileContent = await streamContent.ReadAsStringAsync();
-            var composeApplication = new ComposeApplication(name, composeFileContent);
-            await _clusterManager.CreateApplication(imageUrl, composeApplication);
-
-            return Ok(new { result = $"Application {name} created"});
+            return "FunctionsController started";
         }
 
         // POST api/functions/foo/run
@@ -58,21 +38,6 @@ namespace FuncLite.Controllers
                 return StatusCode(400, e.Message);
             }
         }
-
-        // DELETE api/functions/foo
-        [HttpDelete("{name}")]
-        public async Task<IActionResult> Delete(string name)
-        {
-            try
-            {
-                await _clusterManager.DeleteApplication(name);
-            }
-            catch (Exception e)
-            {
-                return StatusCode(400, e.Message);
-            }
-
-            return Ok(new { result = $"Application {name} deleted" });
-        }
+        
     }
 }
