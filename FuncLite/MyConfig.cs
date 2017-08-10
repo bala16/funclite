@@ -21,5 +21,7 @@ namespace FuncLite
         public string DockerImageName { get; set; }
         public string DockerRegistryUserName { get; set; }
         public string DockerRegistryPassword { get; set; }
+        public string ClusterEndPoint { get; set; }
+        public string ClusterPort { get; set; }
     }
 }
