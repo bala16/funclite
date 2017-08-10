@@ -17,6 +17,12 @@ namespace FuncLite.Controllers
             _clusterManager = clusterManager;
         }
 
+        [HttpGet]
+        public string Get()
+        {
+            return "Controller started";
+        }
+
         // POST api/functions/foo
         [HttpPost("{name}")]
         public async Task<IActionResult> PostFunction([FromRoute] string name, IFormCollection formData)
