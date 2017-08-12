@@ -23,21 +23,20 @@ namespace FuncLite.Controllers
             return "FunctionsController started";
         }
 
-        // POST api/functions/foo/run
-        [HttpPost]
+        //POST/GET api/functions/<appname>/<servicename>/<functionName>/run
         [HttpGet]
-        [Route("{functionName}/run")]
-        public async Task<dynamic> RunFunction(string functionName, string name)
+        [HttpPost]
+        [Route("{appName}/{serviceName}/{functionName}/run")]
+        public async Task<dynamic> RunFunction(string appName, string serviceName, string functionName, string name)
         {
             try
             {
-                return await _clusterManager.RunFunction(functionName, name);
+                return await _clusterManager.ExecuteFunction(appName, serviceName, functionName, name);
             }
             catch (Exception e)
             {
                 return StatusCode(400, e.Message);
             }
         }
-        
     }
 }

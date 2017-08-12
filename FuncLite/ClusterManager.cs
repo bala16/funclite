@@ -14,7 +14,6 @@ namespace FuncLite
         private readonly int _portNumber;
         readonly HttpClient _client;
 
-        private static readonly string FunctionEndpointTemplate = "{0}/api/{1}";
         private static readonly string ClusterEndpointTemplate = "{0}:{1}";
 
         public ClusterManager(IOptions<MyConfig> config, ILogger<AppManager> logger)
@@ -25,6 +24,16 @@ namespace FuncLite
 
             _client = new HttpClient(new LoggingHandler(new HttpClientHandler(), logger));
             _client.BaseAddress = new Uri(string.Format(ClusterEndpointTemplate, _endPoint, _portNumber));
+        }
+
+        public async Task<dynamic> GetApplications()
+        {
+            using (var response = await _client.GetAsync(
+                $"/Applications?api-version=3.0"))
+            {
+                response.EnsureSuccessStatusCode();
+                return await response.Content.ReadAsAsync<dynamic>();
+            }
         }
 
         public async Task CreateApplication(ComposeApplication composeApplication)
@@ -41,12 +50,12 @@ namespace FuncLite
             }
         }
 
-        public async Task<dynamic> RunFunction(string functionName, string name)
+        public async Task<dynamic> ExecuteFunction(string appName, string serviceName, string functionName, string name)
         {
-            var functionEndpoint = string.Format(FunctionEndpointTemplate, _config.ClusterEndPoint, functionName);
+            var functionEndpoint = $"{_config.ClusterEndPoint}/api/{appName}/{serviceName}/{functionName}?name={name}";
             using (var functionHttpClient = new HttpClient())
             {
-                using (var response = await functionHttpClient.GetAsync($"{functionEndpoint}?name={name}"))
+                using (var response = await functionHttpClient.GetAsync(functionEndpoint))
                 {
                     response.EnsureSuccessStatusCode();
                     return await response.Content.ReadAsStringAsync();

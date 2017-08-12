@@ -18,9 +18,9 @@ namespace FuncLite.Controllers
         }
 
         [HttpGet]
-        public string Get()
+        public async Task<dynamic> Get()
         {
-            return "AppsController started";
+            return await _clusterManager.GetApplications();
         }
 
         // POST api/apps/foo
