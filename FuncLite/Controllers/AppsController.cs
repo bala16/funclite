@@ -18,28 +18,29 @@ namespace FuncLite.Controllers
         }
 
         [HttpGet]
-        public async Task<dynamic> Get()
+        public async Task<dynamic> GetAllApps()
         {
             return await _clusterManager.GetApplications();
         }
 
-        // POST api/apps/foo
-        [HttpPost("{name}")]
-        public async Task<IActionResult> CreateApp([FromRoute] string name, IFormCollection formData)
+        [HttpGet("{appName}")]
+        public async Task<dynamic> GetApplication(string appName)
         {
-            var composeFile = formData.Files.FirstOrDefault(f => f.FileName.EndsWith(".yml"));
+            return await _clusterManager.GetApplicationInfo(appName);
+        }
 
-            if (composeFile == null)
+        // POST api/apps/<appName>
+        [HttpPost("{appName}")]
+        public async Task<IActionResult> CreateApp(string appName, IFormCollection formData)
+        {
+            var appTypeName = formData.FirstOrDefault(kvp => kvp.Key.Equals("TypeName")).Value.FirstOrDefault();
+            var appTypeVersion = formData.FirstOrDefault(kvp => kvp.Key.Equals("TypeVersion")).Value.FirstOrDefault();
+            if (appTypeName == null || appTypeVersion == null)
             {
                 return BadRequest();
             }
-
-            var streamContent = new StreamContent(composeFile.OpenReadStream());
-            var composeFileContent = await streamContent.ReadAsStringAsync();
-            var composeApplication = new ComposeApplication(name, composeFileContent);
-            await _clusterManager.CreateApplication(composeApplication);
-
-            return Ok(new { result = $"Application {name} created" });
+            await _clusterManager.CreateApp(appName, appTypeName, appTypeVersion);
+            return Ok(new {result = $"Application {appName} created"});
         }
 
         // DELETE api/apps/foo
@@ -58,5 +59,23 @@ namespace FuncLite.Controllers
             return Ok(new { result = $"Application {name} deleted" });
         }
 
+        // POST api/apps/foo/compose
+        [HttpPost("{name}/compose")]
+        public async Task<IActionResult> CreateComposeApp([FromRoute] string name, IFormCollection formData)
+        {
+            var composeFile = formData.Files.FirstOrDefault(f => f.FileName.EndsWith(".yml"));
+
+            if (composeFile == null)
+            {
+                return BadRequest();
+            }
+
+            var streamContent = new StreamContent(composeFile.OpenReadStream());
+            var composeFileContent = await streamContent.ReadAsStringAsync();
+            var composeApplication = new ComposeApplication(name, composeFileContent);
+            await _clusterManager.CreateComposeApp(composeApplication);
+
+            return Ok(new { result = $"Application {name} created" });
+        }
     }
 }

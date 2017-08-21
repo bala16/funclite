@@ -18,7 +18,7 @@ namespace FuncLite
         public static async Task<T> ReadAsAsync<T>(this HttpContent content)
         {
             string json = await content.ReadAsStringAsync();
-            return (dynamic)JObject.Parse(json);
+            return json.Length > 0 ? (dynamic)JObject.Parse(json) : new JObject();
         }
 
         public static Task<HttpResponseMessage> PutAsJsonAsync<T>(this HttpClient client, string requestUri, T value)
