@@ -60,7 +60,7 @@ namespace FuncLite
             }
         }
 
-        public async Task CreateContainer(string containerGroupName, dynamic definition)
+        public async Task CreateContainerGroup(string containerGroupName, dynamic definition)
         {
             var containerItem = new
             {
@@ -68,7 +68,7 @@ namespace FuncLite
                 properties = new
                 {
                     image = "balag0/functionsproxy:v1",
-                    ports = new [] { new  { port = 80 } },
+                    ports = new [] { new  { port = 7331 } },
                     resources = new
                     {
                         requests = new
@@ -85,7 +85,7 @@ namespace FuncLite
                 new
                 {
                     protocol = "TCP",
-                    port = 80
+                    port = 7331
                 }
             };
 
@@ -105,6 +105,24 @@ namespace FuncLite
                 containerGroup))
             {
                 response.EnsureSuccessStatusCode();
+            }
+        }
+
+        public async Task DeleteContainerGroup(string containerGroupName)
+        {
+            using (var respoonse = await _client.DeleteAsync($"/subscriptions/{_config.Subscription}/resourceGroups/{_config.ResourceGroup}/providers/Microsoft.ContainerInstance/containerGroups/{containerGroupName}?api-version=2017-08-01-preview"))
+            {
+                respoonse.EnsureSuccessStatusCode();
+            }
+        }
+
+        public async Task<dynamic> GetContainerLogs(string containerGroupName, string containerName)
+        {
+            using (var response = await _client.GetAsync(
+                $"/subscriptions/{_config.Subscription}/resourceGroups/{_config.ResourceGroup}/providers/Microsoft.ContainerInstance/containerGroups/{containerGroupName}/containers/{containerName}/logs?api-version=2017-08-01-preview"))
+            {
+                response.EnsureSuccessStatusCode();
+                return await response.Content.ReadAsAsync<dynamic>();
             }
         }
     }

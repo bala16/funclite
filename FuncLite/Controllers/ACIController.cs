@@ -28,12 +28,24 @@ namespace FuncLite.Controllers
             return await _aciManager.GetContainerGroup(containerGroupName);
         }
 
+        [HttpGet("{containerGroupName}/{containerName}/logs")]
+        public async Task<dynamic> GetContainerLogs(string containerGroupName, string containerName)
+        {
+            return await _aciManager.GetContainerLogs(containerGroupName, containerName);
+        }
 
         [HttpPost("{containerGroupName}")]
-        public async Task<IActionResult> CreateContainer(string containerGroupName, [FromBody] dynamic containerGroupDefinition)
+        public async Task<IActionResult> CreateContainerGroup(string containerGroupName, [FromBody] dynamic containerGroupDefinition)
         {
-            await _aciManager.CreateContainer(containerGroupName, containerGroupDefinition);
+            await _aciManager.CreateContainerGroup(containerGroupName, containerGroupDefinition);
             return Ok($"{containerGroupName} created successfully");
+        }
+
+        [HttpDelete("{containerGroupName}")]
+        public async Task<IActionResult> DeleteContainerGroup(string containerGroupName)
+        {
+            await _aciManager.DeleteContainerGroup(containerGroupName);
+            return Ok($"{containerGroupName} deleted successfully");
         }
     }
 }
