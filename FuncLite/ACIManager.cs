@@ -64,11 +64,29 @@ namespace FuncLite
         {
             var containerItem = new
             {
-                name = containerGroupName,
+                name = "proxycontainer",
                 properties = new
                 {
                     image = "balag0/functionsproxy:v1",
                     ports = new [] { new  { port = 7331 } },
+                    resources = new
+                    {
+                        requests = new
+                        {
+                            memoryInGb = 1.5,
+                            cpu = 1.0
+                        }
+                    }
+                }
+            };
+
+            var containerItem2 = new
+            {
+                name = "functionsruntimecontainer",
+                properties = new
+                {
+                    image = "balag0/functionsruntime:fn1",
+                    ports = new[] { new { port = 1337 } },
                     resources = new
                     {
                         requests = new
@@ -86,6 +104,11 @@ namespace FuncLite
                 {
                     protocol = "TCP",
                     port = 7331
+                },
+                new
+                {
+                    protocol = "TCP",
+                    port = 1337
                 }
             };
 
@@ -96,7 +119,7 @@ namespace FuncLite
                 {
                     osType = "Linux",
                     ipAddress = new { ports = ipAddressPorts, type = "Public" },
-                    containers = new [] {containerItem}
+                    containers = new [] {containerItem, containerItem2}
                 }
             };
 
