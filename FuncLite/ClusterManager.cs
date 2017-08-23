@@ -273,5 +273,15 @@ namespace FuncLite
                 response.EnsureSuccessStatusCode();
             }
         }
+
+        public async Task DeleteComposeApp(string appName)
+        {
+            using (var response = await _client.PostAsync(
+                $"/ComposeDeployments/{appName}/$/Delete?api-version=4.0-preview", null))
+            {
+                response.EnsureSuccessStatusCode();
+            }
+
+        }
     }
 }

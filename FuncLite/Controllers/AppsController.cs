@@ -77,5 +77,12 @@ namespace FuncLite.Controllers
 
             return Ok(new { result = $"Application {name} created" });
         }
+
+        [HttpDelete("{name}/compose")]
+        public async Task<IActionResult> DeleteComposeApp([FromRoute] string name)
+        {
+            await _clusterManager.DeleteComposeApp(name);
+            return Ok($"{name} deleted successfully");
+        }
     }
 }
