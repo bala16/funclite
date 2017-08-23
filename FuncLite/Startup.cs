@@ -34,7 +34,8 @@ namespace FuncLite
             services.AddMvc();
 
             services.AddSingleton<ClusterManager>();
-            services.AddSingleton<ACIManager>();
+            services.AddSingleton<RawACIManager>();
+            services.AddSingleton <ACIManager>();
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.

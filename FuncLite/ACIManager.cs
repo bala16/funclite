@@ -1,152 +1,42 @@
 ﻿using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
-using System.Net.Http;
 using System.Threading.Tasks;
-using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Options;
+using Microsoft.AspNetCore.Mvc;
 using Newtonsoft.Json;
 
 namespace FuncLite
 {
     public class ACIManager
     {
-        private readonly HttpClient _client;
-        private readonly MyConfig _config;
-        public ACIManager(IOptions<MyConfig> config, ILogger<ACIManager> logger)
+        private readonly RawACIManager _rawAciManager;
+        private readonly Dictionary<string, ACIApp> _apps;
+
+        public ACIManager(RawACIManager rawAciManager)
         {
-            _config = config.Value;
-
-            string token = AuthenticationHelpers.AcquireTokenBySPN(
-                _config.TenantId, _config.ClientId, _config.ClientSecret).Result;
-
-            _client = new HttpClient(new LoggingHandler(new HttpClientHandler(), logger));
-            _client.DefaultRequestHeaders.Add("Authorization", "Bearer " + token);
-            _client.BaseAddress = new Uri("https://management.azure.com/");
-
-//            CreateResourceGroup(_config.ResourceGroup).Wait();
+            _rawAciManager = rawAciManager;
+            _apps = new Dictionary<string, ACIApp>();
         }
 
-        private async Task CreateResourceGroup(string resourceGroup)
+        public Dictionary<string, ACIApp>.KeyCollection GetApps()
         {
-            using (var response = await _client.PutAsJsonAsync(
-                $"/subscriptions/{_config.Subscription}/resourceGroups/{resourceGroup}?api-version=2015-11-01",
-                new
-                {
-                    location = _config.Region
-                }))
-            {
-                response.EnsureSuccessStatusCode();
-            }
+            return _apps.Keys;
         }
 
-        public async Task<dynamic> GetContainerGroups()
+        public async Task<List<ACIApp>> GetAppsFromARM()
         {
-            using (var response = await _client.GetAsync(
-                $"/subscriptions/{_config.Subscription}/resourceGroups/{_config.ResourceGroup}/providers/Microsoft.ContainerInstance/containerGroups?api-version=2017-08-01-preview"))
+            var aciApps = new List<ACIApp>();
+            var containerGroups = await _rawAciManager.GetContainerGroups();
+
+            foreach (var containerGroup in containerGroups.value)
             {
-                response.EnsureSuccessStatusCode();
-                return await response.Content.ReadAsAsync<dynamic>();
+                var containerProperties = containerGroup.properties.containers[0].properties;
+                string image = containerProperties.image;
+                var aciApp = new ACIApp(image);
+                aciApps.Add(aciApp);
             }
-        }
-
-        public async Task<dynamic> GetContainerGroup(string containerGroupName)
-        {
-            using (var response = await _client.GetAsync(
-                $"/subscriptions/{_config.Subscription}/resourceGroups/{_config.ResourceGroup}/providers/Microsoft.ContainerInstance/containerGroups/{containerGroupName}?api-version=2017-08-01-preview"))
-            {
-                response.EnsureSuccessStatusCode();
-                return await response.Content.ReadAsAsync<dynamic>();
-            }
-        }
-
-        public async Task CreateContainerGroup(string containerGroupName, dynamic definition)
-        {
-            var containerItem = new
-            {
-                name = "proxycontainer",
-                properties = new
-                {
-                    image = "balag0/functionsproxy:v1",
-                    ports = new [] { new  { port = 7331 } },
-                    resources = new
-                    {
-                        requests = new
-                        {
-                            memoryInGb = 1.5,
-                            cpu = 1.0
-                        }
-                    }
-                }
-            };
-
-            var containerItem2 = new
-            {
-                name = "functionsruntimecontainer",
-                properties = new
-                {
-                    image = "balag0/functionsruntime:fn1",
-                    ports = new[] { new { port = 1337 } },
-                    resources = new
-                    {
-                        requests = new
-                        {
-                            memoryInGb = 1.5,
-                            cpu = 1.0
-                        }
-                    }
-                }
-            };
-
-            var ipAddressPorts = new[]
-            {
-                new
-                {
-                    protocol = "TCP",
-                    port = 7331
-                },
-                new
-                {
-                    protocol = "TCP",
-                    port = 1337
-                }
-            };
-
-            var containerGroup = new
-            {
-                location = _config.Region,
-                properties = new
-                {
-                    osType = "Linux",
-                    ipAddress = new { ports = ipAddressPorts, type = "Public" },
-                    containers = new [] {containerItem, containerItem2}
-                }
-            };
-
-            using (var response = await _client.PutAsJsonAsync(
-                $"/subscriptions/{_config.Subscription}/resourceGroups/{_config.ResourceGroup}/providers/Microsoft.ContainerInstance/containerGroups/{containerGroupName}?api-version=2017-08-01-preview",
-                containerGroup))
-            {
-                response.EnsureSuccessStatusCode();
-            }
-        }
-
-        public async Task DeleteContainerGroup(string containerGroupName)
-        {
-            using (var respoonse = await _client.DeleteAsync($"/subscriptions/{_config.Subscription}/resourceGroups/{_config.ResourceGroup}/providers/Microsoft.ContainerInstance/containerGroups/{containerGroupName}?api-version=2017-08-01-preview"))
-            {
-                respoonse.EnsureSuccessStatusCode();
-            }
-        }
-
-        public async Task<dynamic> GetContainerLogs(string containerGroupName, string containerName)
-        {
-            using (var response = await _client.GetAsync(
-                $"/subscriptions/{_config.Subscription}/resourceGroups/{_config.ResourceGroup}/providers/Microsoft.ContainerInstance/containerGroups/{containerGroupName}/containers/{containerName}/logs?api-version=2017-08-01-preview"))
-            {
-                response.EnsureSuccessStatusCode();
-                return await response.Content.ReadAsAsync<dynamic>();
-            }
+            return aciApps;
         }
     }
 }
