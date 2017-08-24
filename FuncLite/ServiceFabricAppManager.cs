@@ -18,7 +18,25 @@ namespace FuncLite
             _sfApps = new Dictionary<string, ServiceFabricApp>(StringComparer.OrdinalIgnoreCase);
             _nextAvailablePort = 81;
 
-            // Load existing apps on startup
+//            Init().Wait();
+        }
+
+        private async Task Init()
+        {
+            await LoadExistingApps();
+        }
+
+        private async Task LoadExistingApps()
+        {
+            var appsJson = await _clusterManager.GetApplications();
+            foreach (var item in appsJson.Items)
+            {
+                string key = Convert.ToString(item.Id);
+                if (!_sfApps.ContainsKey(key))
+                {
+                    _sfApps[key] = new ServiceFabricApp(key, $"{key}Service");
+                }
+            }
         }
 
         public Dictionary<string, ServiceFabricApp>.KeyCollection GetApps()

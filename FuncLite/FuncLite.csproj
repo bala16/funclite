@@ -5,6 +5,14 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <None Remove="Properties\PublishProfiles\aug23 - Web Deploy.pubxml" />
+    <None Remove="Properties\PublishProfiles\august23 - Web Deploy.pubxml" />
+    <None Remove="Properties\PublishProfiles\august232017 - Web Deploy.pubxml" />
+    <None Remove="Properties\PublishProfiles\fdemo12 - Web Deploy.pubxml" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Folder Include="Properties\PublishProfiles\" />
     <Folder Include="wwwroot\" />
   </ItemGroup>
   <ItemGroup>
