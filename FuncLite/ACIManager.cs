@@ -17,14 +17,14 @@ namespace FuncLite
         private readonly HttpClient _client;
         private readonly MyConfig _config;
 
-        private readonly ConcurrentDictionary<string, Lazy<string>> _cache;
+        private readonly ReaderWriterLockSlim _lock;
         private readonly ConcurrentDictionary<string, ContainerGroup> _containerGroups;
 
         public ACIManager(IOptions<MyConfig> config, ILogger<RawACIManager> logger)
         {
             _config = config.Value;
 
-            _cache = new ConcurrentDictionary<string, Lazy<string>>();
+            _lock = new ReaderWriterLockSlim();
             _containerGroups = new ConcurrentDictionary<string, ContainerGroup>();
 
             string token = AuthenticationHelpers.AcquireTokenBySPN(
@@ -58,6 +58,8 @@ namespace FuncLite
                 var containerGroup = new ContainerGroup(containerGroupName, _config.Region);
                 var properties = value.properties;
                 var ipAddress = properties.ipAddress;
+                string ip = ipAddress.ip;
+                containerGroup.IpAddress = ip;
                 foreach (var port in ipAddress.ports)
                 {
                     uint portNo = port.port;
@@ -80,32 +82,20 @@ namespace FuncLite
                     containerGroup.AddContainer(currentContainer);
                 }
                 _containerGroups.TryAdd(containerGroupName, containerGroup);
-                AddApp(containerGroupName);
+                AddApp(containerGroupName, containerGroup);
                 publicPorts.Clear();
             }
         }
 
-        private string GetOrAdd(string appName, Func<string, Task<string>> valueFactory)
-        {
-            Func<string, Lazy<string>> factory = k => new Lazy<string>(() => valueFactory(k).Result, LazyThreadSafetyMode.ExecutionAndPublication);
-            var lazy = _cache.GetOrAdd(appName, factory);
-            return lazy.Value;
-        }
-
         public async Task<dynamic> RunFunction(string appName, string functionName, string name)
         {
-            if (!AppExists(appName))
-            {
-                throw new Exception($"{appName} not found");
-            }
-
             ContainerGroup appContainerGroup;
             if (!_containerGroups.TryGetValue(appName, out appContainerGroup))
             {
                 throw new Exception($"{appName} containerGroup not found");
             }
 
-            var ipAddress = GetOrAdd(appName, DoGetIpAddress);
+            var ipAddress = appContainerGroup.IpAddress;
             var port = appContainerGroup.PublicPorts.First();
 
             var functionEndpoint = $"http://{ipAddress}:{port}/api/{functionName}/?name={name}";
@@ -122,17 +112,17 @@ namespace FuncLite
 
         public IEnumerable<string> GetApps()
         {
-            return _cache.Keys;
+            return _containerGroups.Keys;
         }
 
         private bool AppExists(string appName)
         {
-            return _cache.ContainsKey(appName);
+            return _containerGroups.ContainsKey(appName);
         }
 
-        public void AddApp(string appName)
+        private void AddApp(string appName, ContainerGroup containerGroup)
         {
-            GetOrAdd(appName, DoGetIpAddress);
+            _containerGroups.TryAdd(appName, containerGroup);
         }
 
         public async Task<List<ACIApp>> GetAppsFromARM()
@@ -152,7 +142,7 @@ namespace FuncLite
 
         public async Task CreateApp(string appName, dynamic appDefinition)
         {
-            if (AppExists(appName))
+            if (!_containerGroups.TryAdd(appName, null))
             {
                 throw new Exception($"{appName} exists already");
             }
@@ -179,7 +169,7 @@ namespace FuncLite
                 containerGroup.AddContainer(container);
             }
 
-            _containerGroups.TryAdd(appName, containerGroup);
+            
             var aciCreateContainerRequest = containerGroup.ToACICreateContainerRequest();
 
             using (var response = await _client.PutAsJsonAsync(
@@ -187,11 +177,13 @@ namespace FuncLite
                 aciCreateContainerRequest))
             {
                 response.EnsureSuccessStatusCode();
-                AddApp(appName);
+                var ipAddress = await GetIpAddressFromARM(appName);
+                containerGroup.IpAddress = ipAddress;
+                _containerGroups.TryUpdate(appName, containerGroup, null);
             }
         }
 
-        private async Task<string> DoGetIpAddress(string appName)
+        public async Task<string> GetIpAddressFromARM(string appName)
         {
             using (var response = await _client.GetAsync(
                 $"/subscriptions/{_config.Subscription}/resourceGroups/{_config.ResourceGroup}/providers/Microsoft.ContainerInstance/containerGroups/{appName}?api-version=2017-08-01-preview"))
@@ -204,14 +196,9 @@ namespace FuncLite
             }
         }
 
-        public async Task<string> GetIpAddress(string appName)
-        {
-            return await DoGetIpAddress(appName);
-        }
-
         public async Task DeleteApp(string appName)
         {
-            if (!AppExists(appName) || !_containerGroups.ContainsKey(appName))
+            if (!AppExists(appName))
             {
                 throw new Exception($"{appName} not found");
             }
@@ -221,8 +208,6 @@ namespace FuncLite
                 response.EnsureSuccessStatusCode();
                 ContainerGroup appContainerGroup;
                 _containerGroups.TryRemove(appName, out appContainerGroup);
-                Lazy<string> appInfo;
-                _cache.TryRemove(appName, out appInfo);
             }
         }
     }

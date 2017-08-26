@@ -36,7 +36,7 @@ namespace FuncLite.Controllers
         [HttpGet("{appName}/ipaddress")]
         public async Task<string> GetIpAddress(string appName)
         {
-            return await _aciManager.GetIpAddress(appName);
+            return await _aciManager.GetIpAddressFromARM(appName);
         }
 
         [HttpPost("{containerGroupName}/{functionName}")]

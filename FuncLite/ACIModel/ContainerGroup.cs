@@ -13,6 +13,7 @@ namespace FuncLite.ACIModel
         private readonly List<Container> _containers;
         public List<uint> PublicPorts { get; }
         private readonly string _location;
+        public string IpAddress { get; set; }
 
         public ContainerGroup(string containerGroupName, string location)
         {
