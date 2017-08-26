@@ -133,9 +133,9 @@ namespace FuncLite
 
         public async Task DeleteContainerGroup(string containerGroupName)
         {
-            using (var respoonse = await _client.DeleteAsync($"/subscriptions/{_config.Subscription}/resourceGroups/{_config.ResourceGroup}/providers/Microsoft.ContainerInstance/containerGroups/{containerGroupName}?api-version=2017-08-01-preview"))
+            using (var response = await _client.DeleteAsync($"/subscriptions/{_config.Subscription}/resourceGroups/{_config.ResourceGroup}/providers/Microsoft.ContainerInstance/containerGroups/{containerGroupName}?api-version=2017-08-01-preview"))
             {
-                respoonse.EnsureSuccessStatusCode();
+                response.EnsureSuccessStatusCode();
             }
         }
 
