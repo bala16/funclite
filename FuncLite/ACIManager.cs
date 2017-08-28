@@ -18,18 +18,24 @@ namespace FuncLite
         private const int AppScaleUpThreshold = 4;
         private const int AppMonitoringInterval = -60;
         private readonly HttpClient _client;
+        private readonly HttpClient _functionsHttpClient;
         private readonly MyConfig _config;
 
         private readonly SemaphoreSlim _lock;
+        private readonly SemaphoreSlim _backgroundTaskLock;
         private readonly ConcurrentDictionary<string, ContainerGroupCollection> _containerGroupCollections;
         private readonly ConcurrentDictionary<string, List<long>> _appUsageTimes;
         private readonly Timer _timer;
 
-        public ACIManager(IOptions<MyConfig> config, ILogger<RawACIManager> logger)
+        public ILogger<ACIManager> Logger { get; }
+
+        public ACIManager(IOptions<MyConfig> config, ILogger<ACIManager> logger)
         {
             _config = config.Value;
+            Logger = logger;
 
             _lock = new SemaphoreSlim(1, 1);
+            _backgroundTaskLock = new SemaphoreSlim(1,1);
             _containerGroupCollections = new ConcurrentDictionary<string, ContainerGroupCollection>(StringComparer.OrdinalIgnoreCase);
             _appUsageTimes = new ConcurrentDictionary<string, List<long>>(StringComparer.OrdinalIgnoreCase);
 
@@ -40,6 +46,8 @@ namespace FuncLite
             _client.DefaultRequestHeaders.Add("Authorization", "Bearer " + token);
             _client.BaseAddress = new Uri("https://management.azure.com/");
 
+            _functionsHttpClient = new HttpClient();
+
             LoadExistingApps().Wait();
 
             _timer = new Timer(async _ => await BackgroundMaintenance(), null, 0, 60000); // 10 seconds
@@ -47,45 +55,66 @@ namespace FuncLite
 
         private async Task BackgroundMaintenance()
         {
-            var appNames = new List<string>();
-            await _lock.WaitAsync();
+            var startTask = _backgroundTaskLock.Wait(0);
             try
             {
-                appNames.AddRange(_containerGroupCollections.Keys);
+                if (startTask)
+                {
+                    var appNames = new List<string>(_containerGroupCollections.Keys);
+                    var appsToScaleUp = new List<string>();
+                    var appsToScaleDown = new List<string>();
+                    var interval = DateTime.Now.AddSeconds(AppMonitoringInterval).Ticks;
+
+                    foreach (var appName in appNames)
+                    {
+                        if (!_appUsageTimes.ContainsKey(appName)) continue;
+                        var appUsageTimes = _appUsageTimes[appName];
+                        var index = 0;
+                        while (index < appUsageTimes.Count && appUsageTimes[index] < interval)
+                        {
+                            index++;
+                        }
+                        // todo Remove execution times before start of interval period
+
+                        var executionsInLastInterval = appUsageTimes.Count - index;
+
+                        var containerGroups = _containerGroupCollections[appName];
+                        if (executionsInLastInterval <= AppScaleDownThreshold && containerGroups.CanScaleDown())
+                        {
+                            appsToScaleDown.Add(appName);
+                        }
+                        else if (executionsInLastInterval > AppScaleUpThreshold && containerGroups.CanScaleUp())
+                        {
+                            _appUsageTimes[appName] = new List<long>();
+                            appsToScaleUp.Add(appName);
+                        }
+                    }
+
+                    var scaleTasks = appsToScaleUp.Select(appName => ScaleApp(appName, true)).ToList();
+                    Logger.LogInformation($"Scale Up task count: {scaleTasks.Count}");
+                    var scaleDownTasks = appsToScaleDown.Select(appName => ScaleApp(appName, false)).ToList();
+                    Logger.LogInformation($"Scale down task count: {scaleDownTasks.Count}");
+                    scaleTasks.AddRange(scaleDownTasks);
+
+                    await Task.WhenAll(scaleTasks);
+                }
+                else
+                {
+                    Logger.LogInformation("Skipping background maintenance");
+                }
+
+            }
+            catch (Exception)
+            {
+                // Ignore
             }
             finally
             {
-                _lock.Release();
-            }
-            var appsToScaleUp = new List<string>();
-            var appsToScaleDown = new List<string>();
-            var interval = DateTime.Now.AddSeconds(AppMonitoringInterval).Ticks;
-
-            foreach (var appName in appNames)
-            {
-                if (!_appUsageTimes.ContainsKey(appName)) continue;
-                var appUsageTimes = _appUsageTimes[appName];
-                var index = 0;
-                while (index < appUsageTimes.Count && appUsageTimes[index] < interval)
+                if (startTask)
                 {
-                    index++;
-                }
-                // todo Remove execution times prior to interval period
-                var executionsInLast10Seconds = appUsageTimes.Count - index;
-                if (executionsInLast10Seconds <= AppScaleDownThreshold)
-                {
-                    appsToScaleDown.Add(appName);
-                }
-                else if (executionsInLast10Seconds > AppScaleUpThreshold)
-                {
-                    _appUsageTimes[appName] = new List<long>();
-                    appsToScaleUp.Add(appName);
+                    _backgroundTaskLock.Release();
                 }
             }
-
-            var scaleTasks = appsToScaleUp.Select(appName => ScaleApp(appName, true)).ToList();
-            scaleTasks.AddRange(appsToScaleDown.Select(appName => ScaleApp(appName, false)));
-            await Task.WhenAll(scaleTasks);
         }
 
         public async Task LoadExistingApps()
@@ -167,6 +196,7 @@ namespace FuncLite
         {
             var appUsageTimes = _appUsageTimes.ContainsKey(appName) ? _appUsageTimes[appName] : new List<long>();
             appUsageTimes.Add(DateTime.Now.Ticks);
+            Logger.LogInformation($"{appName} triggered at {appUsageTimes.Last()}");
             _appUsageTimes[appName] = appUsageTimes;
         }
 
@@ -184,31 +214,26 @@ namespace FuncLite
             var ipAddress = nextContainerGroup.IpAddress;
             var port = nextContainerGroup.PublicPorts.First();
             var functionEndpoint = $"http://{ipAddress}:{port}/api/{functionName}/?name={name}";
-            using (var functionHttpClient = new HttpClient())
+            Logger.LogInformation($"Triggering function {appName}/{functionName} at {nextContainerGroup.Name}");
+
+            using (var response = await _functionsHttpClient.GetAsync(functionEndpoint))
             {
-                using (var response = await functionHttpClient.GetAsync(functionEndpoint))
+                if (!response.IsSuccessStatusCode)
                 {
-                    if (!response.IsSuccessStatusCode)
-                    {
-                        Console.WriteLine(response);
-                    }
-                    response.EnsureSuccessStatusCode();
-                    return await response.Content.ReadAsStringAsync();
+                    Logger.LogError($"{nextContainerGroup.Name} failed with {response.StatusCode}");
                 }
+                else
+                {
+                    Logger.LogInformation($"{nextContainerGroup.Name} succeeded with {response.StatusCode}");
+                }
+                response.EnsureSuccessStatusCode();
+                return await response.Content.ReadAsStringAsync();
             }
         }
 
-        public async Task<IEnumerable<string>> GetApps()
+        public IEnumerable<string> GetApps()
         {
-            await _lock.WaitAsync();
-            try
-            {
-                return _containerGroupCollections.Keys;
-            }
-            finally
-            {
-                _lock.Release();
-            }
+            return _containerGroupCollections.Keys;
         }
 
         public async Task<List<ACIApp>> GetAppsFromARM()
@@ -294,6 +319,7 @@ namespace FuncLite
                 return ipAddress.ip;
             }
         }
+
         private async Task DeleteContainerGroup(string containerGroupName)
         {
             using (var response = await _client.DeleteAsync(
@@ -319,6 +345,9 @@ namespace FuncLite
                     var deleteContainerGroupsTask = containerGroupCollection.GetContainerGroupNames()
                         .Select(DeleteContainerGroup);
                     await Task.WhenAll(deleteContainerGroupsTask);
+
+                    List<long> appUsage;
+                    _appUsageTimes.TryRemove(appName, out appUsage);
                 }
             }
             finally
@@ -327,85 +356,33 @@ namespace FuncLite
             }
         }
 
+        private async Task DelayAddContainerGroup(string appName, ContainerGroupCollection containerGroupCollection, ContainerGroup containerGroup)
+        {
+            await Task.Delay(15000);
+            containerGroupCollection.AddContainerGroup(containerGroup);
+            _containerGroupCollections[appName] = containerGroupCollection;
+        }
+
         public async Task ScaleApp(string appName, bool up)
         {
             ContainerGroupCollection containerGroupCollection;
-
-            await _lock.WaitAsync();
-            bool appExists;
-            try
+            if (_containerGroupCollections.TryGetValue(appName, out containerGroupCollection))
             {
-                appExists = _containerGroupCollections.TryGetValue(appName, out containerGroupCollection);
-            }
-            finally
-            {
-                _lock.Release();
-            }
-
-
-            if (appExists)
-            {
-                var updateContainerGroup = false;
-                if (up && containerGroupCollection.CanScaleUp())
+                if (up)
                 {
-                    updateContainerGroup = true;
                     var nextContainerGroup = containerGroupCollection.GetNextContainerGroup();
                     var duplicateContainerGroup = nextContainerGroup.Duplicate();
                     duplicateContainerGroup.IpAddress = await CreateContainerGroup(duplicateContainerGroup);
-                    containerGroupCollection.AddContainerGroup(duplicateContainerGroup);
+                    //todo Add delay to let containers start
+                    await DelayAddContainerGroup(appName, containerGroupCollection, duplicateContainerGroup);
                 }
-                else if (containerGroupCollection.CanScaleDown())
+                else
                 {
-                    updateContainerGroup = true;
                     var containerGroup = containerGroupCollection.RemoveNextContainerGroup();
                     await DeleteContainerGroup(containerGroup.Name);
-                }
-                if (updateContainerGroup)
-                {
-                    await _lock.WaitAsync();
-                    try
-                    {
-                        _containerGroupCollections[appName] = containerGroupCollection;
-                    }
-                    finally
-                    {
-                        _lock.Release();
-                    }
+                    _containerGroupCollections[appName] = containerGroupCollection;
                 }
             }
-
-
-//            await _lock.WaitAsync();
-//            try
-//            {
-//                ContainerGroupCollection containerGroupCollection;
-//                if (_containerGroupCollections.TryGetValue(appName, out containerGroupCollection))
-//                {
-//                    var updateContainerGroup = false;
-//                    if (up && containerGroupCollection.CanScaleUp())
-//                    {
-//                        updateContainerGroup = true;
-//                        var nextContainerGroup = containerGroupCollection.GetNextContainerGroup();
-//                        var duplicateContainerGroup = nextContainerGroup.Duplicate();
-//                        duplicateContainerGroup.IpAddress = await CreateContainerGroup(duplicateContainerGroup);
-//                        containerGroupCollection.AddContainerGroup(duplicateContainerGroup);
-//                    }
-//                    else if (containerGroupCollection.CanScaleDown())
-//                    {
-//                        updateContainerGroup = true;
-//                        var containerGroup = containerGroupCollection.RemoveNextContainerGroup();
-//                        await DeleteContainerGroup(containerGroup.Name);
-//                    }
-//                    if (updateContainerGroup)
-//                    {
-//                        _containerGroupCollections[appName] = containerGroupCollection;
-//                    }
-//                }
-//            }
-//            finally
-//            {
-//                _lock.Release();
-//            }
         }
     }
 }

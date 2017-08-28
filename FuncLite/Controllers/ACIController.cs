@@ -16,9 +16,9 @@ namespace FuncLite.Controllers
         }
 
         [HttpGet]
-        public async Task<dynamic> GetApps()
+        public dynamic GetApps()
         {
-            return JsonConvert.SerializeObject(await _aciManager.GetApps(), Formatting.Indented);
+            return JsonConvert.SerializeObject(_aciManager.GetApps(), Formatting.Indented);
         }
 
         [HttpGet("{appName}")]
