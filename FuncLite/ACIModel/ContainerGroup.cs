@@ -9,16 +9,18 @@ namespace FuncLite.ACIModel
 {
     public class ContainerGroup
     {
-        private readonly string _containerGroupName;
         private readonly List<Container> _containers;
         public List<uint> PublicPorts { get; }
         private readonly string _location;
         public string IpAddress { get; set; }
 
-        public ContainerGroup(string containerGroupName, string location)
+        public string Name { get; }
+
+        public ContainerGroup(string name, string location, string ipAddress)
         {
-            _containerGroupName = containerGroupName;
+            Name = name;
             _location = location;
+            IpAddress = ipAddress;
             _containers = new List<Container>();
             PublicPorts = new List<uint>();
         }
@@ -33,6 +35,17 @@ namespace FuncLite.ACIModel
                     PublicPorts.Add(containerPort.Port);
                 }
             }
+        }
+
+        public ContainerGroup Duplicate()
+        {
+            var newContainerGroupName = ACIUtils.GetContainerGroupNameForAppName(ACIUtils.GetAppNameFromContainerGroupName(Name));
+            var newContainerGroup = new ContainerGroup(newContainerGroupName, _location, "");
+            foreach (var container in _containers)
+            {
+                newContainerGroup.AddContainer(container);
+            }
+            return newContainerGroup;
         }
 
         public JObject ToACICreateContainerRequest()

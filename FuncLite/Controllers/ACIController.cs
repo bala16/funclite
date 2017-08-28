@@ -1,9 +1,5 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Net.Http;
 using System.Threading.Tasks;
-using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Newtonsoft.Json;
 
@@ -20,12 +16,18 @@ namespace FuncLite.Controllers
         }
 
         [HttpGet]
-        public dynamic GetApps()
+        public async Task<dynamic> GetApps()
         {
-            return JsonConvert.SerializeObject(_aciManager.GetApps(), Formatting.Indented);
+            return JsonConvert.SerializeObject(await _aciManager.GetApps(), Formatting.Indented);
         }
 
-        // Each app is its own container group
+        [HttpGet("{appName}")]
+        public dynamic GetContainerGroups(string appName)
+        {
+            return _aciManager.GetContainerGroups(appName);
+        }
+
+        // Each app is its own container group (1+)
         [HttpPost("{appName}")]
         public async Task<IActionResult> CreateApp(string appName, [FromBody] dynamic appDefinition)
         {
