@@ -16,7 +16,8 @@ namespace FuncLite
     {
         private const int AppScaleDownThreshold = 0;
         private const int AppScaleUpThreshold = 4;
-        private const int AppMonitoringInterval = -60;
+        private const int AppMonitoringInterval = -90;
+        private const int ContainerGroupCreationMillisecondsDelay = 60000;
         private readonly HttpClient _client;
         private readonly HttpClient _functionsHttpClient;
         private readonly MyConfig _config;
@@ -50,7 +51,7 @@ namespace FuncLite
 
             LoadExistingApps().Wait();
 
-            _timer = new Timer(async _ => await BackgroundMaintenance(), null, 0, 60000); // 10 seconds
+            _timer = new Timer(async _ => await BackgroundMaintenance(), null, 0, 60000); // 60 seconds
         }
 
         private async Task BackgroundMaintenance()
@@ -299,6 +300,7 @@ namespace FuncLite
                 var containerGroupCollection = new ContainerGroupCollection(appName);
                 containerGroupCollection.AddContainerGroup(containerGroup);
                 _containerGroupCollections[appName] = containerGroupCollection;
+                await Task.Delay(ContainerGroupCreationMillisecondsDelay);
             }
             finally
             {
@@ -358,7 +360,7 @@ namespace FuncLite
 
         private async Task DelayAddContainerGroup(string appName, ContainerGroupCollection containerGroupCollection, ContainerGroup containerGroup)
         {
-            await Task.Delay(15000);
+            await Task.Delay(ContainerGroupCreationMillisecondsDelay);
             containerGroupCollection.AddContainerGroup(containerGroup);
             _containerGroupCollections[appName] = containerGroupCollection;
         }
